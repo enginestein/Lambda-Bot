@@ -3614,4 +3614,4 @@ async def on_message(message):
 
         await _bot.process_commands(message)
 
-_bot.run("OTc3MjAzMjAzMTQ3OTgwODgx.G1YvDY.ij1w_DW0W0QAWjF1MSMtLQHkXbMJ2k-wQwT6og")      
+_bot.run("replace with your token")      
