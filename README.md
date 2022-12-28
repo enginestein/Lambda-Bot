@@ -1,9 +1,6 @@
 This is a discord bot with 50+ commands with a unique economy system. 
-# The-Nerd
-A discord.py bot 
+# The Nerd
 =======
-# Nerd
-
 # Installation
 
 ~ py -m pip install -r requirements.txt
