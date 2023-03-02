@@ -1,4 +1,4 @@
-This is a discord bot with 50+ commands with a unique economy system. 
+This is a discord bot with 40+ commands with a unique economy system. 
 # The Nerd
 =======
 # How to use
