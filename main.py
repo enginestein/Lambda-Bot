@@ -1,8 +1,6 @@
 from urllib.request import urlopen
-from topgg import Forbidden
 from arrays import burns
 from arrays import hug_links
-import youtube_dl
 import os
 import random
 import json
@@ -10,30 +8,17 @@ import randfacts
 import aiohttp
 import logging
 import asyncio
-import numpy as np
-import matplotlib
-from matplotlib import pyplot as plt
-from TagScriptEngine import Interpreter, block
-from pylab import scatter, plot, grid, arrow
-import noise
-import plotly
-import plotly.graph_objects as go   
-import PIL.Image
 from colorama import Fore, Style
 import datetime
 import traceback
-from easy_pil import Editor, load_image_async, Font
-from akinator.async_aki import Akinator
-from disnake.ext import commands, tasks
 import disnake
-from disnake_components import *
-import akinator as aki_
-import typing
-from youtubesearchpython import VideosSearch
-from sympy import * 
-from chemlib import Element, Compound
+from disnake.ext import commands
+from topgg import Forbidden
+from easy_pil import *
 
-#https://discord.com/api/oauth2/authorize?client_id=977203203147980881&permissions=1644971949559&scope=bot
+
+# https://discord.com/api/oauth2/authorize?client_id=1017975608942268416&permissions=4398046511095&scope=bot
+
 intents = disnake.Intents.all()
 print(Style.BRIGHT + "")
 print(Fore.GREEN + "--------------------------------------------------------")
@@ -51,7 +36,6 @@ logging.basicConfig(level=logging.INFO)
 intents.members = True
 voice_clients = {}
 yt_dl_opts = {'format': 'bestaudio/best'}
-ytdl = youtube_dl.YoutubeDL(yt_dl_opts)
 song_played=[]
 song_url=[]
 chvc=[]
@@ -59,113 +43,14 @@ FFMPEG_OPTIONS = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconne
 time_window_milliseconds = 5000
 max_msg_per_window = 5
 author_msg_times = {}
-aki = Akinator()
 sent_color = 0xE3E5E8
 changed_color = 0xFAA61A
 deleted_color = 0xF04747
 colors = [1752220, 1146986, 3066993, 2067276, 3447003, 2123412, 10181046, 7419530, 15277667,15844367, 11342935, 12745742, 15105570, 11027200, 15158332, 10038562, 9807270, 9936031, 8359053, 12370112, 3426654, 2899536, 16776960]
 
-async def send_to_log(bot, embed, channel_id):
-    channel = _bot.get_channel(int(channel_id))
-    await channel.send(embed=embed)
-
-async def log_reaction(reaction, user, type):
-
-    with open('setup.json', 'r') as file:
-        data = json.load(file)  
-    
-    message_log_id = data[str(reaction.message.guild.id)]['msg_id'][0]
-
-    if user.id == _bot.user.id:
-        return 0
-    if reaction.message.guild is None:
-        return 0
-
-    bot_user = ""
-    if user.bot:
-        bot_user = " (bot)"
-
-    if type == 'Deleted':
-        color = deleted_color
-    elif type == 'Sent':
-        color = sent_color
-
-    embed = disnake.Embed(title=f"{user}{bot_user}",description=f"{reaction.emoji}\n"f"[jump to message]({reaction.message.jump_url})",color=color)
-    embed.set_footer(text=f"Author ID: {user.id}\nMessage ID: {reaction.message.id}")
-    embed.set_thumbnail(url=user.avatar.url)
-    embed.set_author(name=f"Reaction {type} in #{reaction.message.channel}",icon_url=_bot.user.avatar.url)
-
-    try:
-        embed.set_image(url=reaction.emoji.url)
-    except AttributeError:
-        unicodes = []
-        for emoji in reaction.emoji:
-            unicodes.append(f"{ord(emoji):x}")
-
-        filename = '-'.join(unicodes)
-        embed.set_image(url=f"https://twemoji.maxcdn.com/v/latest/72x72/{filename}.png")
-
-    await send_to_log(_bot, embed, channel_id=message_log_id)
-
-@_bot.event
-async def on_reaction_add(reaction, user):
-    await log_reaction(reaction, user, type='Sent')
-
-@_bot.event
-async def on_reaction_remove(reaction, user):
-    await log_reaction(reaction, user, type='Deleted')
-
-async def setups(user):
-    with open('setup.json', 'r') as file:
-        data = json.load(file)  
-
-    if str(user.guild.id) in data:
-        return False
-    else:
-        data[str(user.guild.id)] = {}
-        data[str(user.guild.id)]['msg_id'] = []
-        data[str(user.guild.id)]['hello_byebye'] = []
-        data[str(user.guild.id)]['level'] = []
-    
-    with open('setup.json', 'w') as file:
-        json.dump(data, file)  
-    
-
-@_bot.slash_command(description="Set the channel for welcome and leaving messages")
-@commands.has_permissions(administrator=True)
-async def weleave(ctx, channel_id):
-    await setups(ctx)
-    with open('setup.json', 'r') as file:
-        data = json.load(file)  
-    
-    if len(data[str(ctx.guild.id)]['hello_byebye']) == 0:
-    
-        data[str(ctx.guild.id)]['hello_byebye'].append(channel_id)
-
-        with open('setup.json', 'w') as file:
-            json.dump(data, file)  
-        
-        embed = disnake.Embed(color=random.choice(colors))
-        embed.add_field(name="You have set up welcome and leave messages in", value=_bot.get_channel(int(channel_id)))
-        await ctx.send(embed=embed)
-    
-    else:
-        data[str(ctx.guild.id)]['hello_byebye'].clear()
-        with open('setup.json', 'w') as file:
-            json.dump(data, file)  
-        
-        data[str(ctx.guild.id)]['hello_byebye'].append(channel_id)
-
-        with open('setup.json', 'w') as file:
-            json.dump(data, file)
-        
-        embed = disnake.Embed(color=random.choice(colors))
-        embed.add_field(name="You have set up welcome and leave messages in", value=_bot.get_channel(int(channel_id)))
-        await ctx.send(embed=embed)
-
 @_bot.event
 async def on_member_join(member: disnake.Member):
-    with open('setup.json', 'r') as file:
+    with open('setup.json', 'r', encoding='utf-8') as file:
         data = json.load(file)
     
     channel = _bot.get_channel(int(data[str(member.guild.id)]['hello_byebye'][0]))
@@ -175,391 +60,13 @@ async def on_member_join(member: disnake.Member):
 
 @_bot.event
 async def on_member_remove(member: disnake.Member):
-    with open('setup.json', 'r') as file:
+    with open('setup.json', 'r', encoding='utf-8') as file:
         data = json.load(file)
     
     channel = _bot.get_channel(int(data[str(member.guild.id)]['hello_byebye'][0]))
     embed = disnake.Embed(color=random.choice(colors))
     embed.add_field(name="One of our members have left", valiue=member.mention)
     await channel.send(embed=embed)
-
-@_bot.slash_command(description="Set up the logs")
-@commands.has_permissions(administrator=True)
-async def logs(ctx, logging_channel):
-    await setups(ctx)
-    with open('setup.json', 'r') as file:
-        data = json.load(file)  
-    
-    if len(data[str(ctx.guild.id)]['msg_id']) == 0:
-    
-        data[str(ctx.guild.id)]['msg_id'].append(logging_channel)
-
-        with open('setup.json', 'w') as file:
-            json.dump(data, file)  
-
-        embed = disnake.Embed(color=random.choice(colors))
-        embed.add_field(name='You have set up message and reaction logs in', value=_bot.get_channel(int(logging_channel)))
-        await ctx.send(embed=embed)
-    
-    else:
-        data[str(ctx.guild.id)]['msg_id'].clear()
-        with open('setup.json', 'w') as file:
-            json.dump(data, file)  
-        
-        data[str(ctx.guild.id)]['msg_id'].append(logging_channel)
-
-        with open('setup.json', 'w') as file:
-            json.dump(data, file)
-        
-        embed = disnake.Embed(color=random.choice(colors))
-        embed.add_field(name='You have set up message and reaction logs in', value=_bot.get_channel(int(logging_channel)))
-        await ctx.send(embed=embed)
-
-@_bot.event
-async def log_message(message, type, before=None, attachments_old=None):
-
-    with open('setup.json', 'r') as file:
-        data = json.load(file)  
-    
-    message_log_id = data[str(message.guild.id)]['msg_id'][0]
-
-    if message.author.id == _bot.user.id:
-        return 0
-
-    if message.guild is None:
-        return 0
-
-    bot_user = ""
-    if message.author.bot:
-        bot_user = " (bot)"
-
-    try:
-        attachments = ""
-        count = 1
-        for a in message.attachments:
-            attachments += f"\n[attachment{count}]({a.url})"
-            count += 1
-    except Exception:
-        attachments = ""
-
-    description = ""
-    if type == 'Edited':
-        color = changed_color
-        description = f"Before:\n{before.content}{attachments_old}\n\nAfter:\n"
-    elif type == 'Deleted':
-        color = deleted_color
-    elif type == 'Sent':
-        color = sent_color
-
-    embed = disnake.Embed(title=f"{message.author}{bot_user}",description=f"{description}{message.content}{attachments}\n"f"[jump to message]({message.jump_url})",color=color)
-    embed.set_footer(text=f"Author ID: {message.author.id}\nMessage ID: {message.id}")
-    embed.set_thumbnail(url=message.author.avatar.url)
-    embed.set_author(name=f"Message {type} in #{message.channel}", icon_url=_bot.user.avatar.url)
-    await send_to_log(_bot, embed, channel_id=message_log_id)
-
-@_bot.event
-async def on_message_edit(before, message):
-        if before.content == message.content:
-            return 0
-        try:
-            attachments_old = ""
-            count = 1
-            for a in before.attachments:
-                attachments_old += f"\n[attachment{count}]({a.url})"
-                count += 1
-        except Exception:
-            attachments_old = ""
-
-        await log_message(message, type='Edited', before=before,attachments_old=attachments_old)
-
-@_bot.event
-async def on_message_delete(message):
-        await log_message(message, type='Deleted')
-
-class AkinatorButtons(disnake.ui.View):
-    def __init__(
-        self,
-        author: disnake.Member,
-        aki: aki_.Akinator,
-        embed: disnake.Embed,
-        counter: int,
-    ):
-        super().__init__(timeout=300)
-
-        self.author = author
-        self.aki = aki
-        self.embed = embed
-        self.counter = counter
-
-    async def interaction_check(self, interaction: disnake.MessageInteraction) -> bool:
-        if interaction.author == self.author:
-            return True
-
-        await interaction.response.send_message(
-            "This is not your Akinator Game!!", ephemeral=True
-        )
-        return False
-
-    @disnake.ui.button(
-        label="Yes", style=disnake.ButtonStyle.blurple, emoji='👍'
-    )
-    async def yes(
-        self, button: disnake.ui.Button, interaction: disnake.MessageInteraction
-    ):
-        await interaction.response.defer()
-        question = self.aki.answer("yes")
-        self.counter += 1
-        self.embed.title = f"Question no. {self.counter}: {question}"
-        await interaction.edit_original_message(
-            embed=self.embed,
-        )
-
-        if self.aki.progression >= 85:
-            self.aki.win()
-            await interaction.edit_original_message(
-                embed=akinator_embed(guess=self.aki.first_guess), view=None
-            )
-
-    @disnake.ui.button(
-        label="No", style=disnake.ButtonStyle.blurple, emoji='👎'
-    )
-    async def no(
-        self, button: disnake.ui.Button, interaction: disnake.MessageInteraction
-    ):
-        await interaction.response.defer()
-        question = self.aki.answer("no")
-        self.counter += 1
-        self.embed.title = f"Question no. {self.counter}: {question}"
-        await interaction.edit_original_message(
-            embed=self.embed,
-        )
-
-        if self.aki.progression >= 85:
-            self.aki.win()
-            await interaction.edit_original_message(
-                embed=akinator_embed(guess=self.aki.first_guess), view=None
-            )
-
-    @disnake.ui.button(
-        label="Don't Know",
-        style=disnake.ButtonStyle.blurple,
-        emoji='❓',
-    )
-    async def dont_know(
-        self, button: disnake.ui.Button, interaction: disnake.MessageInteraction
-    ):
-        await interaction.response.defer()
-        question = self.aki.answer("idk")
-        self.counter += 1
-        self.embed.title = f"Question no. {self.counter}: {question}"
-        await interaction.edit_original_message(
-            embed=self.embed,
-        )
-
-        if self.aki.progression >= 85:
-            self.aki.win()
-            await interaction.edit_original_message(
-                embed=akinator_embed(guess=self.aki.first_guess), view=None
-            )
-
-    @disnake.ui.button(
-        label="Probably",
-        style=disnake.ButtonStyle.blurple,
-        emoji='🤔',
-    )
-    async def probably(
-        self, button: disnake.ui.Button, interaction: disnake.MessageInteraction
-    ):
-        await interaction.response.defer()
-        question = self.aki.answer("probably")
-        self.counter += 1
-        self.embed.title = f"Question no. {self.counter}: {question}"
-        await interaction.edit_original_message(
-            embed=self.embed,
-        )
-
-        if self.aki.progression >= 85:
-            self.aki.win()
-            await interaction.edit_original_message(
-                embed=akinator_embed(guess=self.aki.first_guess), view=None
-            )
-
-    @disnake.ui.button(
-        label="Probably Not",
-        style=disnake.ButtonStyle.blurple,
-        emoji='🙄',
-        row=2,
-    )
-    async def probably_not(
-        self, button: disnake.ui.Button, interaction: disnake.MessageInteraction
-    ):
-        await interaction.response.defer()
-        question = self.aki.answer("probably not")
-        self.counter += 1
-        self.embed.title = f"Question no. {self.counter}: {question}"
-        await interaction.edit_original_message(
-            embed=self.embed,
-        )
-
-        if self.aki.progression >= 85:
-            self.aki.win()
-            await interaction.edit_original_message(
-                embed=akinator_embed(guess=self.aki.first_guess), view=None
-            )
-
-    @disnake.ui.button(
-        label="Back",
-        style=disnake.ButtonStyle.blurple,
-        emoji="⏪",
-        row=2,
-    )
-    async def back(
-        self, button: disnake.ui.Button, interaction: disnake.MessageInteraction
-    ):
-        await interaction.response.defer()
-        try:
-            question = self.aki.back()
-            self.counter -= 1
-            self.embed.title = f"Question no. {self.counter}: {question}"
-            await interaction.edit_original_message(embed=self.embed)       
-        except akinator.CantGoBackAnyFurther:
-            pass
-
-    @disnake.ui.button(
-        label="Stop", style=disnake.ButtonStyle.blurple, emoji='🛑', row=2
-    )
-    async def stop_(
-        self, button: disnake.ui.Button, interaction: disnake.MessageInteraction
-    ):
-        await interaction.response.defer()
-        await interaction.edit_original_message(
-            content="Game Stopped", embed=None, view=None
-        )
-        self.stop()
-
-from math import (
-    acos,
-    asin,
-    atan,
-    atan2,
-    ceil,
-    cos,
-    cosh,
-    degrees,
-    e,
-    exp,
-    fabs,
-    floor,
-    fmod,
-    frexp,
-    hypot,
-    ldexp,
-    log,
-    log10,
-    modf,
-    pi,
-    pow,
-    radians,
-    sin,
-    sinh,
-    sqrt,
-    tan,
-    tanh,
-    factorial,)
-
-SAFE_MATH_COMMANDS = [
-    "acos",
-    "asin",
-    "atan",
-    "atan2",
-    "ceil",
-    "cos",
-    "cosh",
-    "degrees",
-    "e",
-    "exp",
-    "fabs",
-    "floor",
-    "fmod",
-    "frexp",
-    "hypot",
-    "ldexp",
-    "log",
-    "log10",
-    "modf",
-    "pi",
-    "pow",
-    "radians",
-    "sin",
-    "sinh",
-    "sqrt",
-    "tan",
-    "tanh",
-    "factorial",
-    "Decimal",
-]
-
-SAFE_COMMAND_DICT = {}
-for k in SAFE_MATH_COMMANDS:
-    SAFE_COMMAND_DICT[k] = locals().get(k)
-
-EXTRA_SAFE_BUILTINS = [
-    "int",
-    "float",
-    "bool",
-    "str",  
-    "ord",
-    "abs",
-    "all",
-    "any",
-    "ascii",
-    "bin",
-    "bytearray",
-    "bytes",
-    "chr",
-    "complex",
-    "dict",
-    "set",
-    "divmod",
-    "enumerate",
-    "filter",
-    "format",
-    "hash",
-    "hex",
-    "id",
-    "iter",
-    "len",
-    "list",
-    "map",
-    "max",
-    "min",
-    "next",
-    "print",
-    "oct",
-    "pow",
-    "repr",
-    "reversed",
-    "round",
-    "slice",
-    "sorted",
-    "sum",
-    "tuple",
-    "type",
-    "zip",
-]
-
-GLOBAL_BUILTINS_DICT = {}
-for k in EXTRA_SAFE_BUILTINS:
-    GLOBAL_BUILTINS_DICT[k] = __builtins__.__dict__.get(k)
-
-STEPS = np.arange(-10, 10, 0.01)
-
-X_CONIC = np.linspace(-10, 10, 500)
-Y_CONIC = np.linspace(-10, 10, 500)
-X_CONIC, Y_CONIC = np.meshgrid(X_CONIC, Y_CONIC)
-
-goodbye = ['bye', 'cya', 'later']
-nickname = "Master"
 
 @_bot.event
 async def on_ready(): 
@@ -578,230 +85,17 @@ Made by-
           /`  .'-'.  `\'
          ;_.-`.___.'-.;
            
-   CodEinstein aka ProgramEinstein
+           Enginestein
               ''')
     print(f"Bot logged in as {_bot.user}")
     print("--------------------------------------------------------")
 
-#['Fuck', 'Nigger', 'Nigga', 'Sisterfucker', 'Motherfucker', 'Bastard', 'Dumbass', 'Bitch', 'Shitfucker', 'Dumbfucker']
-
-#['Bitch', 'Fuck', 'Ass', 'Asshole', 'Nigga', 'Nigger', 'Bitchy', 'Bitchass',]
-#['Pissy', 'pissed', 'cunt', 'dumbass',]
-
-blocks = [
-    block.MathBlock(),
-    block.RandomBlock(),
-    block.RangeBlock(),
-]
-engine = Interpreter(blocks)
-
-data = {
-    "1":"¹",
-    "2":"²",
-    "3":"³",
-    "4":"⁴",
-    "5":"⁵",
-    "6":"⁶",
-    "7":"⁷",
-    "8":"⁸",
-    "9":"⁹"
-}
-
-normal_components = [
-    [
-        disnake.ui.Button(style=disnake.ButtonStyle.secondary, label="1", custom_id="1"),
-        disnake.ui.Button(style=disnake.ButtonStyle.secondary, label="2", custom_id="2"),
-        disnake.ui.Button(style=disnake.ButtonStyle.secondary, label="3", custom_id="3"),
-        disnake.ui.Button(style=disnake.ButtonStyle.primary, label="×", custom_id="*"),
-        disnake.ui.Button(style=disnake.ButtonStyle.danger, label="Exit", custom_id="Exit"),
-    ],
-    [
-        disnake.ui.Button(style=disnake.ButtonStyle.secondary, label="4", custom_id="4"),
-        disnake.ui.Button(style=disnake.ButtonStyle.secondary, label="5", custom_id="5"),
-        disnake.ui.Button(style=disnake.ButtonStyle.secondary, label="6", custom_id="6"),
-        disnake.ui.Button(style=disnake.ButtonStyle.primary, label="÷", custom_id="/"),
-        disnake.ui.Button(style=disnake.ButtonStyle.danger, label="⌫", custom_id="⌫"),
-    ],
-    [
-        disnake.ui.Button(style=disnake.ButtonStyle.secondary, label="7", custom_id="7"),
-        disnake.ui.Button(style=disnake.ButtonStyle.secondary, label="8", custom_id="8"),
-        disnake.ui.Button(style=disnake.ButtonStyle.secondary, label="9", custom_id="9"),
-        disnake.ui.Button(style=disnake.ButtonStyle.primary, label="+", custom_id="+"),
-        disnake.ui.Button(style=disnake.ButtonStyle.danger, label="c", custom_id="Clear"),
-    ],
-    [
-        disnake.ui.Button(style=disnake.ButtonStyle.secondary, label="00", custom_id="00"),
-        disnake.ui.Button(style=disnake.ButtonStyle.secondary, label="0", custom_id="0"),
-        disnake.ui.Button(style=disnake.ButtonStyle.secondary, label=".", custom_id="."),
-        disnake.ui.Button(style=disnake.ButtonStyle.primary, label="-", custom_id="-"),
-        disnake.ui.Button(style=disnake.ButtonStyle.success, label="=", custom_id="="),
-    ],
-    [
-        disnake.ui.Button(style=disnake.ButtonStyle.success, label="❮", custom_id="❮"),
-        disnake.ui.Button(style=disnake.ButtonStyle.success, label="❯", custom_id="❯"),
-        disnake.ui.Button(style=disnake.ButtonStyle.secondary, label="Advance mode", custom_id="scientific_mode",),],]
-
-scientific_components = [
-    [
-        disnake.ui.Button(style=disnake.ButtonStyle.secondary, label="(", custom_id="("),
-        disnake.ui.Button(style=disnake.ButtonStyle.secondary, label=")", custom_id=")"),
-        disnake.ui.Button(style=disnake.ButtonStyle.secondary, label="000", custom_id="000"),
-        disnake.ui.Button(style=disnake.ButtonStyle.primary, label="×", custom_id="*"),
-        disnake.ui.Button(style=disnake.ButtonStyle.danger, label="Exit", custom_id="Exit"),
-    ],
-    [
-        disnake.ui.Button(style=disnake.ButtonStyle.secondary, label="X²"),
-        disnake.ui.Button(style=disnake.ButtonStyle.secondary, label="X³"),
-        disnake.ui.Button(style=disnake.ButtonStyle.secondary, label="Xˣ"),
-        disnake.ui.Button(style=disnake.ButtonStyle.primary, label="÷", custom_id="/"),
-        disnake.ui.Button(style=disnake.ButtonStyle.danger, label="⌫", custom_id="⌫"),
-    ],
-    [
-        disnake.ui.Button(style=disnake.ButtonStyle.secondary, label="e", custom_id="e"),
-        disnake.ui.Button(style=disnake.ButtonStyle.secondary, label="τ", custom_id="τ"),
-        disnake.ui.Button(style=disnake.ButtonStyle.secondary, label="π", custom_id="π"),
-        disnake.ui.Button(style=disnake.ButtonStyle.primary, label="+", custom_id="+"),
-        disnake.ui.Button(style=disnake.ButtonStyle.danger, label="Clear", custom_id="Clear"),
-    ],
-    [
-        disnake.ui.Button(style=disnake.ButtonStyle.secondary, label=" ", disabled=True),
-        disnake.ui.Button(style=disnake.ButtonStyle.secondary, label=" ", disabled=True),
-        disnake.ui.Button(style=disnake.ButtonStyle.secondary, label=" ", disabled=True),
-        disnake.ui.Button(style=disnake.ButtonStyle.primary, label="-", custom_id="-"),
-        disnake.ui.Button(style=disnake.ButtonStyle.success, label="=", custom_id="="),
-    ],
-    [
-        disnake.ui.Button(style=disnake.ButtonStyle.success, label="❮", custom_id="❮"),
-        disnake.ui.Button(style=disnake.ButtonStyle.success, label="❯", custom_id="❯"),
-        disnake.ui.Button(
-            style=disnake.ButtonStyle.secondary,
-            label="Normal mode",
-            custom_id="normal_mode",
-        ),
-    ],
-]
-    
-@_bot.slash_command(description="Create an 2d terrain")
-async def ter2(ctx, shape1, shape2, scale, octaves, persistence, lacunarity):
-    s1 = int(float(shape1))
-    s2 = int(float(shape2))
-    shape = (s1, s2)
-    sc = int(float(scale))
-    oct = int(float(octaves))  
-    pers = int(float(persistence))
-    lac = int(float(lacunarity))
-    world = np.zeros(shape)
-    for i in range(shape[0]):
-        for j in range(shape[1]):
-            world[i][j] = noise.pnoise2(i/sc, j/sc, octaves=oct, persistence=pers, lacunarity=lac, repeatx=1042, repeaty=1042, base=42)
-    
-    plt.imshow(world, cmap='terrain')
-    plt.savefig('world.png')
-    embed = disnake.Embed(color=random.choice(colors))
-    embed.add_field(name="Your 2-dimensional terrain", value="-----")
-
-    await ctx.send(embed=embed, file=disnake.File('world.png'))
-
-@_bot.slash_command(description="Create an 3d terrain")
-async def ter3(ctx, shape1, shape2, scale, octaves, persistence, lacunarity):
-    s1 = int(float(shape1))
-    s2 = int(float(shape2))
-    shape = (s1, s2)
-    sc = int(float(scale))
-    oct = int(float(octaves))
-    pers = int(float(persistence))
-    lac = int(float(lacunarity))
-
-    world = np.zeros(shape)
-    for i in range(shape[0]):
-        for j in range(shape[1]):
-            world[i][j] = noise.pnoise2(i/sc, j/sc, octaves=oct, persistence=pers, lacunarity=lac, repeatx=1042, repeaty=1042, base=42)
-    
-    lin_x = np.linspace(0,1,shape[0],endpoint=False)
-    lin_y = np.linspace(0,1,shape[1],endpoint=False)
-    x,y = np.meshgrid(lin_x,lin_y)
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection="3d")
-    ax.plot_surface(x,y,world,cmap='terrain')
-    ax.set_aspect('auto')
-    terrain_cmap = matplotlib.cm.get_cmap('terrain')
-    def matplotlib_to_plotly(cmap, pl_entries):
-        h = 1.0/(pl_entries-1)
-        pl_colorscale = []
-
-        for k in range(pl_entries):
-            C = list(map(np.uint8, np.array(cmap(k*h)[:3])*255))
-            pl_colorscale.append([k*h, 'rgb'+str((C[0], C[1], C[2]))])
-
-        return pl_colorscale
-
-    terrain = matplotlib_to_plotly(terrain_cmap, 255)
-    plotly.offline.init_notebook_mode(connected=True)
-    fig = go.Figure(data=[go.Surface(colorscale=terrain,z=world)])
-    fig.update_layout(title='Random 3D Terrain')
-    file = plotly.offline.plot(fig, filename='3d-terrain-plotly.html',include_plotlyjs='cdn')
-    embed = disnake.Embed(color=random.choice(colors))
-    embed.add_field(name="Your 3-dimensional terrain", value="-----")
-    await ctx.send(embed=embed, file=disnake.File(file))
-
-@_bot.slash_command(description="Make an pie chart!")
-async def pie(ctx, a, b: typing.Optional[float]=0 , c: typing.Optional[float]=0, d: typing.Optional[float]=0, e: typing.Optional[float]=0):
-    label = ['A', "B", "C", "D", "E"]
-
-    data = [a, b, c, d, e]
-
-    fig = plt.figure(figsize =(10, 7))
-    plt.pie(data, labels = label)
-
-    plt.savefig('FRIKINGPLOTTED.jpg')
-    embed = disnake.Embed(color=random.choice(colors))
-    embed.add_field(name="Your Pie chart", value="-----")
-    await ctx.send(embed=embed, file=disnake.File('FRIKINGPLOTTED.jpg'))     
-
-@_bot.slash_command(description="Solve an polynomial")
-async def poly(ctx, expression):
-    try:
-        x = symbols('x')
-        intr = solve(expression, x)
-        embed = disnake.Embed(color=random.choice(colors))
-        embed.add_field(name="Solution", value=intr)
-        await ctx.send(embed=embed)
-    except:
-        embed = disnake.Embed(color=random.choice(colors))
-        embed.add_field(name="Error", value="Invalid equation or wrong format, please trye using * as multiply and ** as power.")
-        await ctx.send(embed=embed)
-
-
-@_bot.slash_command(description="Plot 8 points on cartesian plane")
-async def cart(ctx, p1, p2, p3, p4, p5, p6, p7, p8):
-    x = [p1, p2, p3, p4]
-    y = [p5, p6, p7, p8]
-    color=['m','g','r','b']
-
-    fig = plt.figure()
-    ax = fig.add_subplot(111)
-
-    scatter(x,y, s=100 ,marker='o', c=color)
-
-    [plot([dot_x,dot_x] ,[0,dot_y], '-', linewidth = 3 ) for dot_x,dot_y in zip(x,y)]
-    [plot([0,dot_x] ,[dot_y,dot_y], '-', linewidth = 3 ) for dot_x,dot_y in zip(x,y)]
-
-    left,right = ax.get_xlim()
-    low,high = ax.get_ylim()
-    arrow( left, 0, right -left, 0, length_includes_head = True, head_width = 0.15 )
-    arrow( 0, low, 0, high-low, length_includes_head = True, head_width = 0.15 ) 
-
-    grid()
-    plt.savefig('books_read.png')
-    embed = disnake.Embed(color=random.choice(colors))
-    embed.add_field(name="Your plotting", value="-----")
-    await ctx.send(embed=embed, file=disnake.File('books_read.png'))
 
 class Help(disnake.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
 
-    @disnake.ui.button(label="Fun commands", style=ButtonStyle.green)
+    @disnake.ui.button(label="Fun commands", style=disnake.ButtonStyle.green)
     async def fun(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction):
         embed = disnake.Embed(color=random.choice(colors))
         embed.set_author(name="Games an fun commands")
@@ -811,12 +105,10 @@ class Help(disnake.ui.View):
               ("/pmeme", "`Get an programming meme`", False),
               ("/fact", "`Get an fact`", False),
               ("/web_scrape", "`Scrape HTML of any web page`", False),
-              ("/ascii", "`Turn your pfp into ascii art (need an bigger display to see it)`", False),
               ("/serverinfo", "`Get server info`", False),
               ("/advice <context>", "`Get an advice`", False),
               ("/userinfo <user>", "`Get some information about an user`", False),
               ("/roast <user>", "`Roasting?`", False),
-              ("/akinator", "`Start the akinator`", False),
               ("/pic", "`Get an cool picture`", False),
               ("/truth", "`Get an random truth question`", False),
               ("/compliment", "`Get an compliment`", False),
@@ -828,7 +120,7 @@ class Help(disnake.ui.View):
     
         await interaction.response.send_message(embed=embed)
     
-    @disnake.ui.button(label="Economy commands", style=ButtonStyle.green)
+    @disnake.ui.button(label="Economy commands", style=disnake.ButtonStyle.green)
     async def eco(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction):
         embed = disnake.Embed(color=random.choice(colors))
         embed.set_author(name="Economy commands")
@@ -864,70 +156,6 @@ class Help(disnake.ui.View):
             embed.add_field(name=name, value=value, inline=inline)
     
         await interaction.response.send_message(embed=embed)
-    
-    @disnake.ui.button(label="Music commands", style=ButtonStyle.green)
-    async def music(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction):
-        embed = disnake.Embed(color=random.choice(colors))
-        embed.set_author(name="Music commands")
-
-        commands = [("/play", "`Play music`", False),
-              ("/add <music link>", "`Add music`", False),
-              ("/clear", "`Clear queue`", False),
-              ("/queue", "`Watch the queue`", False),
-              ("/stop", "`Stop music`", False),
-              ("/skip", "`Skip music`", False),
-              ("/remove <song link>", "`Remove an specific song`", False),
-              ("/volume <amount>", "`Change the volume`", False)]
-        
-        for name, value, inline in commands:
-            embed.add_field(name=name, value=value, inline=inline)
-    
-        await interaction.response.send_message(embed=embed)
-    
-    @disnake.ui.button(label="Math and science commands", style=ButtonStyle.green)
-    async def math(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction):
-        embed = disnake.Embed(color=random.choice(colors))
-        embed.set_author(name="Math and science commands")
-
-        commands = [("/cart", "`Pass 8 points as arugments without commas and plot them on cartesian plain.`", False),
-              ("/ter2", "`Generate an 2 dimensional terrain`", False),
-              ("/ter3", "`Generate an 3 dimensional terrain`", False),
-              ("/circ", "`Make a circle (don't change x and y only give an radius on the point arguement`", False),
-              ("/pie", "`Make an pie chart`", False),
-              ("/poly", "`Solve an polynomial`", False),
-              ("/elem <symbol>", "`Get information of an element just by it's symbol`", False),
-              ("/compound <name> <quantity>", "`Get moles and molecules of an compound by passing its name and any quantity`", False)]
-    
-        for name, value, inline in commands:
-            embed.add_field(name=name, value=value, inline=inline)
-    
-        await interaction.response.send_message(embed=embed)
-    
-    @disnake.ui.button(label="Moderator commands", style=ButtonStyle.green)
-    async def mod(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction):
-        embed = disnake.Embed(color=random.choice(colors))
-        embed.set_author(name="Moderating commands")
-
-        commands = [("/ban <user>", "`Ban someone`", False),
-              ("/mute <user> <mutetime (optional)>", "`Mute someone`", False),
-              ("/unmute <user>", "`Unmute someone`", False),
-              ("/kick <user>", "`Kick someone`", False),
-              ("/warn <user> <context>", "`Give a warning`", False),
-              ("/purge <amount>", "`Clear messages`", False),
-              ("/dm <user>", "`Dm someone`", False),
-              ("/spam", "`Enable or disable spam protection`", False),
-              ("/logs <channel id>", "`Set message and reaction logging in an channel`", False),
-              ("/weleave <channel id>", "`Set the channel for welcome and leave messages`", False)]
-        
-        for name, value, inline in commands:
-            embed.add_field(name=name, value=value, inline=inline)
-    
-        await interaction.response.send_message(embed=embed)
-
-@_bot.slash_command(description="Calculate the speed with time and distance")
-async def speed(ctx, time: int, distance: int):
-    embed = disnake.Embed(color=random.choice(colors))
-    embed.add_field(name=f"Speed with time {time} and distance {distance}", value=distance/time)
 
 @_bot.slash_command(description='Get help for commands')
 async def help(ctx):
@@ -962,7 +190,7 @@ async def userinfo(ctx, user: disnake.Member):
 async def learnp(ctx):
     await learning_points(ctx)
     await open_account(ctx)
-    with open('learning_points.json', 'r') as file:
+    with open('learning_points.json', 'r', encoding='utf-8') as file:
         data = json.load(file)
     
     p = data[str(ctx.author.id)]['Physics']
@@ -971,7 +199,7 @@ async def learnp(ctx):
     cs =  data[str(ctx.author.id)]['Computer science']
     m = data[str(ctx.author.id)]['Maths']
      
-    with open('account.json', 'r') as file:
+    with open('account.json', 'r', encoding='utf-8') as file:
         data2 = json.load(file)
 
     if p == 15:
@@ -993,21 +221,8 @@ def akinator_embed(question: str = None, counter: int = None, guess=None) -> dis
 
     return embed
 
-@_bot.slash_command(description="Play Akinator Game") 
-async def akinator(inter: disnake.ApplicationCommandInteraction):
-        await inter.response.defer()
-
-        aki = aki_.Akinator()
-        question = aki.start_game(child_mode=True)
-        counter = 1
-
-        embed = akinator_embed(question, counter)
-        await inter.edit_original_message(
-            embed=embed,
-            view=AkinatorButtons(author=inter.author, aki=aki, embed=embed, counter=counter))
-
 async def log_in(user):
-    with open('login.json', 'r') as file:
+    with open('login.json', 'r', encoding='utf-8') as file:
         data = json.load(file)  
 
     if str(user.author.id) in data:
@@ -1028,15 +243,15 @@ class Attack(disnake.ui.View):
 
         self.member = member
 
-    @disnake.ui.button(label="Ransomware", style=ButtonStyle.red)
+    @disnake.ui.button(label="Ransomware", style=disnake.ButtonStyle.red)
     async def ransomware(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction):
 
         computers = ["Computer🖱️🖥️⌨️<:AMD_Radeon_RX_6900_XT_GPU:987622463431122954>💾", "Computer🖱️🖥️⌨️<:AMD_Radeon_RX_6900_XT_GPU:987622463431122954><:disnakeFloppy:987628788256997377>", "Computer🖱️🖥️⌨️<:Nvidia_3090_GPU:987623191159660555>💾", "Computer🖱️🖥️⌨️<:Nvidia_3090_GPU:987623191159660555><:disnakeFloppy:987628788256997377>", "Computer🖱️🖥️⌨️💾", "Computer🖱️🖥️⌨️<:disnakeFloppy:987628788256997377>"]
-        with open('account.json', 'r') as f:
+        with open('account.json', 'r', encoding='utf-8') as f:
             file = json.load(f)
         
         if any(computer in file[str(interaction.user.id)]["Inventory"] for computer in computers):
-            with open("login.json", 'r') as r:
+            with open("login.json", 'r', encoding='utf-8') as r:
                 f = json.load(r)
             
             if "Ransomware" in f[str(interaction.user.id)]["Programs"]:
@@ -1093,16 +308,16 @@ class Attack(disnake.ui.View):
             await interaction.response.send_message(embed=embed)
             
     
-    @disnake.ui.button(label="Spyware", style=ButtonStyle.red)
+    @disnake.ui.button(label="Spyware", style=disnake.ButtonStyle.red)
     async def spyware(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction):
-        with open('account.json', 'r') as f:
+        with open('account.json', 'r', encoding='utf-8') as f:
             data2 = json.load(f)
         
         computers = ["Computer🖱️🖥️⌨️<:AMD_Radeon_RX_6900_XT_GPU:987622463431122954>💾", "Computer🖱️🖥️⌨️<:AMD_Radeon_RX_6900_XT_GPU:987622463431122954><:disnakeFloppy:987628788256997377>", "Computer🖱️🖥️⌨️<:Nvidia_3090_GPU:987623191159660555>💾", "Computer🖱️🖥️⌨️<:Nvidia_3090_GPU:987623191159660555><:disnakeFloppy:987628788256997377>", "Computer🖱️🖥️⌨️💾", "Computer🖱️🖥️⌨️<:disnakeFloppy:987628788256997377>"]
 
         if any(computer in data2[str(interaction.user.id)]['Inventory'] for computer in computers):
             if "Coin Booster <:DigitalTwo:1003623866272329748>" in data2[str(interaction.user.id)]["Inventory"]:
-                with open("login.json", 'r') as r:
+                with open("login.json", 'r', encoding='utf-8') as r:
                     f = json.load(r)
             
                 if "Spyware" in f[str(interaction.user.id)]["Programs"]:
@@ -1139,7 +354,7 @@ class Attack(disnake.ui.View):
                     embed.add_field(name="Failed", value="You don't have an spyware, create it using /software")
                     interaction.response.send_message(embed=embed)
             else:
-                with open("login.json", 'r') as r:
+                with open("login.json", 'r', encoding='utf-8') as r:
                     f = json.load(r)
             
                 if "Spyware" in f[str(interaction.user.id)]["Programs"]:
@@ -1179,14 +394,14 @@ class Attack(disnake.ui.View):
             await interaction.response.send_message("You don't have a computer, assemble one, make an program then run it")
                 
     
-    @disnake.ui.button(label="Malware", style=ButtonStyle.red)
+    @disnake.ui.button(label="Malware", style=disnake.ButtonStyle.red)
     async def malware(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction): 
         computers = ["Computer🖱️🖥️⌨️<:AMD_Radeon_RX_6900_XT_GPU:987622463431122954>💾", "Computer🖱️🖥️⌨️<:AMD_Radeon_RX_6900_XT_GPU:987622463431122954><:disnakeFloppy:987628788256997377>", "Computer🖱️🖥️⌨️<:Nvidia_3090_GPU:987623191159660555>💾", "Computer🖱️🖥️⌨️<:Nvidia_3090_GPU:987623191159660555><:disnakeFloppy:987628788256997377>", "Computer🖱️🖥️⌨️💾", "Computer🖱️🖥️⌨️<:disnakeFloppy:987628788256997377>"]
-        with open('account.json', 'r') as f:
+        with open('account.json', 'r', encoding='utf-8') as f:
             file = json.load(f)
         
         if any(computer in file[str(interaction.user.id)]["Inventory"] for computer in computers):
-            with open("login.json", 'r') as r:
+            with open("login.json", 'r', encoding='utf-8') as r:
                 f = json.load(r)
             
             if "Malware" in f[str(interaction.user.id)]["Programs"]:
@@ -1221,15 +436,15 @@ class Software(disnake.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
 
-    @disnake.ui.button(label="Ransomware", style=ButtonStyle.blue)
+    @disnake.ui.button(label="Ransomware", style=disnake.ButtonStyle.blurple)
     async def ransomware(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction):
         computers = ["Computer🖱️🖥️⌨️<:AMD_Radeon_RX_6900_XT_GPU:987622463431122954>💾", "Computer🖱️🖥️⌨️<:AMD_Radeon_RX_6900_XT_GPU:987622463431122954><:disnakeFloppy:987628788256997377>", "Computer🖱️🖥️⌨️<:Nvidia_3090_GPU:987623191159660555>💾", "Computer🖱️🖥️⌨️<:Nvidia_3090_GPU:987623191159660555><:disnakeFloppy:987628788256997377>", "Computer🖱️🖥️⌨️💾", "Computer🖱️🖥️⌨️<:disnakeFloppy:987628788256997377>"]
-        with open('account.json', 'r') as f:
+        with open('account.json', 'r', encoding='utf-8') as f:
             file = json.load(f)
         
         if any(computer in file[str(interaction.user.id)]["Inventory"] for computer in computers):
             await interaction.response.send_message("You have made an Ransomware, it is now in your programs")
-            with open('login.json', 'r') as login:
+            with open('login.json', 'r', encoding='utf-8') as login:
                 d = json.load(login)
             
             d[str(interaction.user.id)]["Programs"].append("Ransomware")
@@ -1240,17 +455,17 @@ class Software(disnake.ui.View):
             embed.add_field(name="Failed", value="You don't have a computer, assemble one.")
             await interaction.response.send_message(embed=embed)
     
-    @disnake.ui.button(label="Spyware", style=ButtonStyle.blue)
+    @disnake.ui.button(label="Spyware", style=disnake.ButtonStyle.blurple)
     async def spyware(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction):
         computers = ["Computer🖱️🖥️⌨️<:AMD_Radeon_RX_6900_XT_GPU:987622463431122954>💾", "Computer🖱️🖥️⌨️<:AMD_Radeon_RX_6900_XT_GPU:987622463431122954><:disnakeFloppy:987628788256997377>", "Computer🖱️🖥️⌨️<:Nvidia_3090_GPU:987623191159660555>💾", "Computer🖱️🖥️⌨️<:Nvidia_3090_GPU:987623191159660555><:disnakeFloppy:987628788256997377>", "Computer🖱️🖥️⌨️💾", "Computer🖱️🖥️⌨️<:disnakeFloppy:987628788256997377>"]
-        with open('account.json', 'r') as f:
+        with open('account.json', 'r', encoding='utf-8') as f:
             file = json.load(f)
         
         if any(computer in file[str(interaction.user.id)]['Inventory'] for computer in computers):
             embed = disnake.Embed(color=random.choice(colors))
             embed.add_field(name="Success", value="You have made an Spyware, it is now in your programs")
             await interaction.response.send_message(embed=embed)
-            with open('login.json', 'r') as login:
+            with open('login.json', 'r', encoding='utf-8') as login:
                 d = json.load(login)
             
             d[str(interaction.user.id)]["Programs"].append("Spyware")
@@ -1261,17 +476,17 @@ class Software(disnake.ui.View):
             embed.add_field(name="Failed", value="You don't have a computer, assemble one.")
             await interaction.response.send_message(embed=embed)
     
-    @disnake.ui.button(label="Malware", style=ButtonStyle.blue)
+    @disnake.ui.button(label="Malware", style=disnake.ButtonStyle.blurple)
     async def malware(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction):
         computers = ["Computer🖱️🖥️⌨️<:AMD_Radeon_RX_6900_XT_GPU:987622463431122954>💾", "Computer🖱️🖥️⌨️<:AMD_Radeon_RX_6900_XT_GPU:987622463431122954><:disnakeFloppy:987628788256997377>", "Computer🖱️🖥️⌨️<:Nvidia_3090_GPU:987623191159660555>💾", "Computer🖱️🖥️⌨️<:Nvidia_3090_GPU:987623191159660555><:disnakeFloppy:987628788256997377>", "Computer🖱️🖥️⌨️💾", "Computer🖱️🖥️⌨️<:disnakeFloppy:987628788256997377>"]
-        with open('account.json', 'r') as f:
+        with open('account.json', 'r', encoding='utf-8') as f:
             file = json.load(f)
         
         if any(computer in file[str(interaction.user.id)]['Inventory'] for computer in computers):
             embed = disnake.Embed(color=random.choice(colors))
             embed.add_field(name="Success", value="You have made an Malware, it is now in your programs")
             await interaction.response.send_message(embed=embed)
-            with open('login.json', 'r') as login:
+            with open('login.json', 'r', encoding='utf-8') as login:
                 d = json.load(login)
             
             d[str(interaction.user.id)]["Programs"].append("Malware")
@@ -1282,17 +497,17 @@ class Software(disnake.ui.View):
             embed.add_field(name="Failed", value="You don't have a computer, assemble one.")
             await interaction.response.send_message(embed=embed)
     
-    @disnake.ui.button(label="disnake bot", style=ButtonStyle.blue)
+    @disnake.ui.button(label="disnake bot", style=disnake.ButtonStyle.blurple)
     async def disordbot(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction):
         computers = ["Computer🖱️🖥️⌨️<:AMD_Radeon_RX_6900_XT_GPU:987622463431122954>💾", "Computer🖱️🖥️⌨️<:AMD_Radeon_RX_6900_XT_GPU:987622463431122954><:disnakeFloppy:987628788256997377>", "Computer🖱️🖥️⌨️<:Nvidia_3090_GPU:987623191159660555>💾", "Computer🖱️🖥️⌨️<:Nvidia_3090_GPU:987623191159660555><:disnakeFloppy:987628788256997377>", "Computer🖱️🖥️⌨️💾", "Computer🖱️🖥️⌨️<:disnakeFloppy:987628788256997377>"]
-        with open('account.json', 'r') as f:
+        with open('account.json', 'r', encoding='utf-8') as f:
             file = json.load(f)
         
         if any(computer in file[str(interaction.user.id)]['Inventory'] for computer in computers):
             embed = disnake.Embed(color=random.choice(colors))
             embed.add_field(name="Success", value="You have made an disnake bot, it is now in your programs")
             await interaction.response.send_message(embed=embed)
-            with open('login.json', 'r') as login:
+            with open('login.json', 'r', encoding='utf-8') as login:
                 d = json.load(login)
             
             await disnakebot(interaction)
@@ -1305,17 +520,17 @@ class Software(disnake.ui.View):
             embed.add_field(name="Failed", value="You don't have a computer, assemble one.")
             await interaction.response.send_message(embed=embed)
 
-    @disnake.ui.button(label="App", style=ButtonStyle.blue)
+    @disnake.ui.button(label="App", style=disnake.ButtonStyle.blurple)
     async def app(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction):
         computers = ["Computer🖱️🖥️⌨️<:AMD_Radeon_RX_6900_XT_GPU:987622463431122954>💾", "Computer🖱️🖥️⌨️<:AMD_Radeon_RX_6900_XT_GPU:987622463431122954><:disnakeFloppy:987628788256997377>", "Computer🖱️🖥️⌨️<:Nvidia_3090_GPU:987623191159660555>💾", "Computer🖱️🖥️⌨️<:Nvidia_3090_GPU:987623191159660555><:disnakeFloppy:987628788256997377>", "Computer🖱️🖥️⌨️💾", "Computer🖱️🖥️⌨️<:disnakeFloppy:987628788256997377>"]
-        with open('account.json', 'r') as f:
+        with open('account.json', 'r', encoding='utf-8') as f:
             file = json.load(f)
         
         if any(computer in file[str(interaction.user.id)]['Inventory'] for computer in computers):
             embed = disnake.Embed(color=random.choice(colors))
             embed.add_field(name="Success", value="You have made an App, it is now in your programs")
             await interaction.response.send_message(embed=embed)
-            with open('login.json', 'r') as login:
+            with open('login.json', 'r', encoding='utf-8') as login:
                 d = json.load(login)
             
             await app(interaction)
@@ -1328,17 +543,17 @@ class Software(disnake.ui.View):
             embed.add_field(name="Failed", value="You don't have a computer, assemble one.")
             await interaction.response.send_message(embed=embed)
     
-    @disnake.ui.button(label="Website", style=ButtonStyle.blue)
+    @disnake.ui.button(label="Website", style=disnake.ButtonStyle.blurple)
     async def web(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction):
         computers = ["Computer🖱️🖥️⌨️<:AMD_Radeon_RX_6900_XT_GPU:987622463431122954>💾", "Computer🖱️🖥️⌨️<:AMD_Radeon_RX_6900_XT_GPU:987622463431122954><:disnakeFloppy:987628788256997377>", "Computer🖱️🖥️⌨️<:Nvidia_3090_GPU:987623191159660555>💾", "Computer🖱️🖥️⌨️<:Nvidia_3090_GPU:987623191159660555><:disnakeFloppy:987628788256997377>", "Computer🖱️🖥️⌨️💾", "Computer🖱️🖥️⌨️<:disnakeFloppy:987628788256997377>"]
-        with open('account.json', 'r') as f:
+        with open('account.json', 'r', encoding='utf-8') as f:
             file = json.load(f)
         
         if any(computer in file[str(interaction.user.id)]['Inventory'] for computer in computers):
             embed = disnake.Embed(color=random.choice(colors))
             embed.add_field(name="Success", value="You have made an Website, it is now in your programs")
             await interaction.response.send_message(embed=embed)
-            with open('login.json', 'r') as login:
+            with open('login.json', 'r', encoding='utf-8') as login:
                 d = json.load(login)
             
             await website(interaction)
@@ -1355,7 +570,7 @@ class Software(disnake.ui.View):
 #CoolPreTeensAlt#9914   
 
 async def disnakebot(user):
-    with open('dbot.json', 'r') as file:
+    with open('dbot.json', 'r', encoding='utf-8') as file:
         data = json.load(file)  
 
     if str(user.author.id) in data:
@@ -1371,7 +586,7 @@ async def disnakebot(user):
     return True
 
 async def website(user):
-    with open('web.json', 'r') as file:
+    with open('web.json', 'r', encoding='utf-8') as file:
         data = json.load(file)  
 
     if str(user.author.id) in data:
@@ -1386,7 +601,7 @@ async def website(user):
     return True
 
 async def app(user):
-    with open('app.json', 'r') as file:
+    with open('app.json', 'r', encoding='utf-8') as file:
         data = json.load(file)  
 
     if str(user.author.id) in data:
@@ -1404,9 +619,9 @@ class Web(disnake.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
     
-    @disnake.ui.button(label="Advertise", style=ButtonStyle.blue)
+    @disnake.ui.button(label="Advertise", style=disnake.ButtonStyle.blurple)
     async def ad(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction):
-        with open("account.json", 'r') as file:
+        with open("account.json", 'r', encoding='utf-8') as file:
             data = json.load(file)
         
         if data[str(interaction.user.id)]["Bank"] >= 10000:
@@ -1427,14 +642,14 @@ class Web(disnake.ui.View):
         else:
             await interaction.response.send_message("You need to have at least 10000 <:nerd_coin:992265892756979735> to advertise")
     
-    @disnake.ui.button(label="Sell email datas", style=ButtonStyle.blue)
+    @disnake.ui.button(label="Sell email datas", style=disnake.ButtonStyle.blurple)
     async def sell(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction):
         with open('web.json') as file2:
             data2 = json.load(file2)
         
         amt = data2[str(interaction.user.id)]["Signed in people"] * 20
 
-        with open("account.json", 'r') as file:
+        with open("account.json", 'r', encoding='utf-8') as file:
             data = json.load(file)
 
         data[str(interaction.user.id)]["Bank"] += amt
@@ -1444,9 +659,9 @@ class Web(disnake.ui.View):
         
         await interaction.response.send_message(f"You have sold all of email data you had for {amt} <:nerd_coin:992265892756979735>")
     
-    @disnake.ui.button(label="Delete website", style=ButtonStyle.blue)
+    @disnake.ui.button(label="Delete website", style=disnake.ButtonStyle.blurple)
     async def deletee(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction):
-        with open('login.json', 'r') as frik:
+        with open('login.json', 'r', encoding='utf-8') as frik:
             drik = json.load(frik)
         
         drik[str(interaction.user.id)]["Programs"].remove("Website")
@@ -1460,9 +675,9 @@ class App(disnake.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
     
-    @disnake.ui.button(label="Advertise", style=ButtonStyle.blue)
+    @disnake.ui.button(label="Advertise", style=disnake.ButtonStyle.blurple)
     async def ad(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction):
-        with open("account.json", 'r') as file:
+        with open("account.json", 'r', encoding='utf-8') as file:
             data = json.load(file)
         
         if data[str(interaction.user.id)]["Bank"] >= 1000:
@@ -1483,13 +698,13 @@ class App(disnake.ui.View):
         else: 
             await interaction.response.send_message("You need to have at least 1000 <:nerd_coin:992265892756979735> to advertise")
     
-    @disnake.ui.button(label="Show ads", style=ButtonStyle.blue)
+    @disnake.ui.button(label="Show ads", style=disnake.ButtonStyle.blurple)
     async def show(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction):
         with open('app.json') as file2:
             data2 = json.load(file2)
 
         if data2[str(interaction.user.id)]["Downloads"] >= 1000:
-            with open("account.json", 'r') as file:
+            with open("account.json", 'r', encoding='utf-8') as file:
                 data = json.load(file)
             
             data[str(interaction.user.id)]["Bank"] += 10000
@@ -1502,9 +717,9 @@ class App(disnake.ui.View):
         else:
             await interaction.response.send_message("You need at least 1000 downloads to show ads")
 
-    @disnake.ui.button(label="Delete website", style=ButtonStyle.blue)
+    @disnake.ui.button(label="Delete website", style=disnake.ButtonStyle.blurple)
     async def deletee(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction):
-        with open('login.json', 'r') as frik:
+        with open('login.json', 'r', encoding='utf-8') as frik:
             drik = json.load(frik)
         
         drik[str(interaction.user.id)]["Programs"].remove("App")
@@ -1518,9 +733,9 @@ class Dbot(disnake.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
 
-    @disnake.ui.button(label="Advertise", style=ButtonStyle.blue)
+    @disnake.ui.button(label="Advertise", style=disnake.ButtonStyle.blurple)
     async def ad(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction):
-        with open("account.json", 'r') as file:
+        with open("account.json", 'r', encoding='utf-8') as file:
             data = json.load(file)
         
         if data[str(interaction.user.id)]["Bank"] >= 7000:
@@ -1541,9 +756,9 @@ class Dbot(disnake.ui.View):
         else:
             await interaction.response.send_message("You need to have at least 7000 <:nerd_coin:992265892756979735> to advertise")
     
-    @disnake.ui.button(label="Add command", style=ButtonStyle.blue)
+    @disnake.ui.button(label="Add command", style=disnake.ButtonStyle.blurple)
     async def cmd(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction):
-        with open('dbot.json', 'r') as file2:
+        with open('dbot.json', 'r', encoding='utf-8') as file2:
             data2 = json.load(file2)
         
         data2[str(interaction.user.id)]["Commands"] += 1
@@ -1552,13 +767,13 @@ class Dbot(disnake.ui.View):
 
         await interaction.response.send_message("You have added another command in your bot")
     
-    @disnake.ui.button(label="Earn money", style=ButtonStyle.blue)
+    @disnake.ui.button(label="Earn money", style=disnake.ButtonStyle.blurple)
     async def earn(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction):
-        with open('dbot.json', 'r') as file2:
+        with open('dbot.json', 'r', encoding='utf-8') as file2:
             data2 = json.load(file2)
         
         if data2[str(interaction.user.id)]["Servers"] >= 100:
-            with open("account.json", 'r') as file:
+            with open("account.json", 'r', encoding='utf-8') as file:
                 data = json.load(file)
             
             data[str(interaction.user.id)]["Bank"] += 100
@@ -1571,9 +786,9 @@ class Dbot(disnake.ui.View):
         else:
             await interaction.response.send_message("You need to reach 100 servers in order to earn money")
     
-    @disnake.ui.button(label="Delete bot", style=ButtonStyle.red)
+    @disnake.ui.button(label="Delete bot", style=disnake.ButtonStyle.red)
     async def dele(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction):
-        with open('login.json', 'r') as frik:
+        with open('login.json', 'r', encoding='utf-8') as frik:
             drik = json.load(frik)
         
         drik[str(interaction.user.id)]["Programs"].remove("disnake bot")
@@ -1585,7 +800,7 @@ class Dbot(disnake.ui.View):
 
 @_bot.slash_command(description="Delete an program from your computer")
 async def delete(ctx, program_name):
-    with open("login.json", 'r') as file:
+    with open("login.json", 'r', encoding='utf-8') as file:
         data = json.load(file)
     
     deletembed = disnake.Embed(color=random.choice(colors))
@@ -1844,17 +1059,17 @@ class Run(disnake.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
  
-    @disnake.ui.button(label="disnake bot", style=ButtonStyle.blue)
+    @disnake.ui.button(label="disnake bot", style=disnake.ButtonStyle.blurple)
     async def dc(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction):
         computers = ["Computer🖱️🖥️⌨️<:AMD_Radeon_RX_6900_XT_GPU:987622463431122954>💾", "Computer🖱️🖥️⌨️<:AMD_Radeon_RX_6900_XT_GPU:987622463431122954><:disnakeFloppy:987628788256997377>", "Computer🖱️🖥️⌨️<:Nvidia_3090_GPU:987623191159660555>💾", "Computer🖱️🖥️⌨️<:Nvidia_3090_GPU:987623191159660555><:disnakeFloppy:987628788256997377>", "Computer🖱️🖥️⌨️💾", "Computer🖱️🖥️⌨️<:disnakeFloppy:987628788256997377>"]
-        with open('account.json', 'r') as f:
+        with open('account.json', 'r', encoding='utf-8') as f:
             file = json.load(f)
         
         if any(computer in file[str(interaction.user.id)]["Inventory"] for computer in computers):
-            with open('login.json', 'r') as f2:
+            with open('login.json', 'r', encoding='utf-8') as f2:
                 file2 = json.load(f2)
             
-            with open('dbot.json', 'r') as fri:
+            with open('dbot.json', 'r', encoding='utf-8') as fri:
                 dat = json.load(fri)
             
             if "disnake bot" in file2[str(interaction.user.id)]['Programs']:
@@ -1877,17 +1092,17 @@ class Run(disnake.ui.View):
             embed.add_field(name='Running failed', value="You don't have a computer")
             await interaction.response.send_message(embed=embed)
     
-    @disnake.ui.button(label="Website", style=ButtonStyle.blue)
+    @disnake.ui.button(label="Website", style=disnake.ButtonStyle.blurple)
     async def webbo(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction):
         computers = ["Computer🖱️🖥️⌨️<:AMD_Radeon_RX_6900_XT_GPU:987622463431122954>💾", "Computer🖱️🖥️⌨️<:AMD_Radeon_RX_6900_XT_GPU:987622463431122954><:disnakeFloppy:987628788256997377>", "Computer🖱️🖥️⌨️<:Nvidia_3090_GPU:987623191159660555>💾", "Computer🖱️🖥️⌨️<:Nvidia_3090_GPU:987623191159660555><:disnakeFloppy:987628788256997377>", "Computer🖱️🖥️⌨️💾", "Computer🖱️🖥️⌨️<:disnakeFloppy:987628788256997377>"]
-        with open('account.json', 'r') as f:
+        with open('account.json', 'r', encoding='utf-8') as f:
             file = json.load(f)
         
         if any(computer in file[str(interaction.user.id)]["Inventory"] for computer in computers):
-            with open('login.json', 'r') as f2:
+            with open('login.json', 'r', encoding='utf-8') as f2:
                 file2 = json.load(f2)
             
-            with open('web.json', 'r') as fri:
+            with open('web.json', 'r', encoding='utf-8') as fri:
                 dat = json.load(fri)
             
             if "Website" in file2[str(interaction.user.id)]['Programs']:
@@ -1912,7 +1127,7 @@ async def run(ctx):
 @_bot.event
 async def coin_boost(message):
     await open_account(message)
-    with open('account.json', 'r') as file:
+    with open('account.json', 'r', encoding='utf-8') as file:
         data = json.load(file)
     
     if "Coin Booster <:DigitalTwo:1003623866272329748>" in data[str(message.author.id)]["Inventory"]:
@@ -1926,7 +1141,7 @@ async def coin_boost(message):
 @_bot.event
 async def xp_boost(message):
     await open_account(message)
-    with open('account.json', 'r') as file:
+    with open('account.json', 'r', encoding='utf-8') as file:
         data = json.load(file)
     
     if "AI Software <:galaxy_brain:1003621546050474034>" in data[str(message.author.id)]["Inventory"]:
@@ -1940,7 +1155,7 @@ async def xp_boost(message):
 @_bot.event
 async def xp_boost(message):
     await open_account(message)
-    with open('account.json', 'r') as file:
+    with open('account.json', 'r', encoding='utf-8') as file:
         data = json.load(file)
     
     if "AI Software <:galaxy_brain:1003621546050474034>" in data[str(message.author.id)]["Inventory"]:
@@ -1969,7 +1184,7 @@ async def attack_error(ctx, error):
 @_bot.slash_command(description="Assemble your computer!")
 async def assemble(ctx):
     await open_account(ctx)
-    with open('account.json', 'r') as data:
+    with open('account.json', 'r', encoding='utf-8') as data:
         f = json.load(data)
     
     inv = f[str(ctx.author.id)]["Inventory"]
@@ -2004,14 +1219,14 @@ async def assemble(ctx):
 @_bot.slash_command(description="Log in to your computer and see your programs and os")
 async def computer(ctx):
     await open_account(ctx)
-    with open('account.json', 'r') as data:
+    with open('account.json', 'r', encoding='utf-8') as data:
         f = json.load(data)
     
     inv = f[str(ctx.author.id)]["Inventory"]
     computers = ["Computer🖱️🖥️⌨️<:AMD_Radeon_RX_6900_XT_GPU:987622463431122954>💾", "Computer🖱️🖥️⌨️<:AMD_Radeon_RX_6900_XT_GPU:987622463431122954><:disnakeFloppy:987628788256997377>", "Computer🖱️🖥️⌨️<:Nvidia_3090_GPU:987623191159660555>💾", "Computer🖱️🖥️⌨️<:Nvidia_3090_GPU:987623191159660555><:disnakeFloppy:987628788256997377>", "Computer🖱️🖥️⌨️💾", "Computer🖱️🖥️⌨️<:disnakeFloppy:987628788256997377>"]
     if any(comp in inv for comp in computers):
         await log_in(ctx)
-        with open('login.json', 'r') as file:
+        with open('login.json', 'r', encoding='utf-8') as file:
             data = json.load(file) 
         
     
@@ -2048,7 +1263,7 @@ async def advice(ctx, *, message:str):
 @commands.cooldown(1, 86400, commands.BucketType.user)
 async def daily(ctx):
     await open_account(ctx)
-    with open("account.json", 'r') as file:
+    with open("account.json", 'r', encoding='utf-8') as file:
         data = json.load(file)
     
     nc = random.randrange(5000)
@@ -2069,101 +1284,12 @@ async def daily_error(ctx, error):
         embed.add_field(name='Command on cooldown', value=f"Wait for **{tim}** before running this command again")
         await ctx.send(embed=embed) 
 
-@_bot.slash_command(description="DM someone (mod)")
-@commands.has_permissions(administrator = True)
-async def dm(ctx, user: disnake.Member, *, msg):
-    try:
-        await user.send(msg)          
-        await ctx.send("DM has been sent")
-    except disnake.ext.commands.MissingPermissions:
-        await ctx.send("You don't have permission to run this command")
 
-@_bot.slash_command(description="Warn someone (mod)")
-@commands.has_permissions(administrator = True)
-async def warn(ctx, *, reason):
-    try:
-        color = disnake.Color(value=random.choice(colors))
-        em = disnake.Embed(color=color, title=f"WARNING: by {ctx.message.author.name} from **{ctx.author.guild.name}**.", description=f"{reason}")
-        await ctx.author.send(embed=em)
-        await ctx.send("DM has been sent")
-    except disnake.ext.commands.MissingPermissions:
-        await ctx.send("Sorry, you don't have permission to run this command")
-
-@_bot.slash_command(description="Clear messages (mod)")
-@commands.has_permissions(manage_messages = True)
-async def purge(ctx, num):
-    try: 
-        if int(num) is None:
-            await ctx.send("How many messages would you like me to delete? Usage: !purge <number of msgs>")
-        else:
-            try:
-                float(num)
-            except ValueError:
-                return await ctx.send("The number is invalid. Usage: !purge <number of msgs>")
-            await ctx.channel.purge(limit=int(num)+1)
-            msg = await ctx.send("Purged successfully")
-            await asyncio.sleep(3)
-            await msg.delete()
-    except disnake.Forbidden:
-            await ctx.send("Purge unsuccessful. The bot does not have Manage Messges permission.")
-    except disnake.ext.commands.MissingPermissions:
-        await ctx.send("Sorry, you don't have permission to run this command")
-
-@_bot.slash_command(description="Kick someone (mod)")
-@commands.has_permissions(kick_members = True)
-async def kick(ctx, user: disnake.Member):
-    try:
-        await ctx.send(f"{user.name} has been kicked")
-        await user.kick()
-    except disnake.Forbidden:
-        await ctx.send("I don't have banning permissions")
-    except disnake.ext.commands.MissingPermissions:
-        await ctx.send("Sorry, you don't have permission to run this command")
-
-@_bot.slash_command(description="Ban someone (mod)")
-@commands.has_permissions(ban_members = True)
-async def ban(ctx, user: disnake.Member):
-    try:
-        await ctx.send(f"{user.name} has been banned from this server.")
-        await user.ban()
-    except disnake.Forbidden:
-        await ctx.send("I don't have banning permissions")
-    except disnake.ext.commands.MissingPermissions:
-        await ctx.send("Sorry, you don't have permission to run this command")
-
-@_bot.slash_command(description="Mute someone")
-@commands.has_permissions(ban_members=True)
-async def mute(ctx, user: disnake.Member, mutetime=None):
-        try:
-            if mutetime is None:
-                await ctx.channel.set_permissions(user, send_messages=False)
-                await ctx.send(f"{user.mention} has been muted")
-            else:
-                try:
-                    mutetime =int(mutetime)
-                    mutetime = mutetime * 60
-                except ValueError:
-                    return await ctx.send("Invalid time")
-                await ctx.channel.set_permissions(user, send_messages=False)
-                await ctx.send(f"{user.mention} has been muted")
-                await asyncio.sleep(mutetime)
-                await ctx.channel.set_permissions(user, send_messages=True)
-                await ctx.send(f"{user.mention} has been unmuted.")
-        except disnake.Forbidden:
-            return await ctx.send("I could not mute the user. Make sure I have the manage channels permission.")
-        except disnake.ext.commands.MissingPermissions:
-            await ctx.send("Sorry, you don't have permission to run this command")
 
 @_bot.event
 async def on_error(event, *args, **kwargs):
     print(traceback.format_exc())
     print(event)
-
-@_bot.slash_command(description="Unmuter someone")
-@commands.has_permissions(ban_members=True)
-async def unmute(ctx, user: disnake.Member):
-        await ctx.channel.set_permissions(user, send_messages=True)
-        await ctx.send(f"{user.mention} has been unmuted")
 
 @_bot.slash_command(description="Get server information")
 async def serverinfo(ctx):
@@ -2190,7 +1316,7 @@ async def serverinfo(ctx):
 @_bot.slash_command(description="Get an job")
 async def job(ctx,*, jobname):
     await learning_points(ctx)
-    with open('learning_points.json', 'r') as r:
+    with open('learning_points.json', 'r', encoding='utf-8') as r:
         file = json.load(r)
     
     p = file[str(ctx.author.id)]['Physics']
@@ -2200,13 +1326,13 @@ async def job(ctx,*, jobname):
     m = file[str(ctx.author.id)]['Maths']
 
     await open_account(ctx)
-    with open('account.json', 'r') as file:
+    with open('account.json', 'r', encoding='utf-8') as file:
         data = json.load(file)
     
     jb = data[str(ctx.author.id)]['Job']
     inv = data[str(ctx.author.id)]['Inventory']
 
-    with open('jobs.json', 'r') as file:
+    with open('jobs.json', 'r', encoding='utf-8') as file:
         jobs = json.load(file)
     
     if p >= jobs[jobname]["Physics points"]:
@@ -2244,7 +1370,7 @@ async def job(ctx,*, jobname):
 @_bot.slash_command(description="Leave your current job")
 async def retire(ctx):
     await open_account(ctx)
-    with open('account.json', 'r') as file:
+    with open('account.json', 'r', encoding='utf-8') as file:
         data = json.load(file)
     
     if len(data[str(ctx.author.id)]['Job']) == 0:
@@ -2260,7 +1386,7 @@ async def retire(ctx):
 @commands.cooldown(1, 3600, commands.BucketType.user)
 async def work(ctx):
     await open_account(ctx)
-    with open('account.json', 'r') as file:
+    with open('account.json', 'r', encoding='utf-8') as file:
         data = json.load(file)
     
     job = data[str(ctx.author.id)]['Job']
@@ -2269,7 +1395,7 @@ async def work(ctx):
         if len(job) != 0:
             jb = job[0]
 
-            with open('jobs.json', 'r') as file:
+            with open('jobs.json', 'r', encoding='utf-8') as file:
                 jobs = json.load(file)
 
             sal = jobs[jb]['salary']
@@ -2287,7 +1413,7 @@ async def work(ctx):
         if len(job) != 0:
             jb = job[0]
 
-            with open('jobs.json', 'r') as file:
+            with open('jobs.json', 'r', encoding='utf-8') as file:
                 jobs = json.load(file)
 
             sal = jobs[jb]['salary']
@@ -2310,7 +1436,7 @@ async def work_error(ctx, error):
 @_bot.slash_command(description="Check your balance")
 async def bal(ctx):
     await open_account(ctx)
-    with open('account.json', 'r') as file:
+    with open('account.json', 'r', encoding='utf-8') as file:
         data = json.load(file)
     
     bank = data[str(ctx.author.id)]['Bank']
@@ -2325,7 +1451,7 @@ async def bal(ctx):
     await ctx.send(embed=embed)
 
 async def open_account(user):
-    with open('account.json', 'r') as file:
+    with open('account.json', 'r', encoding='utf-8') as file:
         data = json.load(file)  
 
     if str(user.author.id) in data:
@@ -2381,7 +1507,7 @@ async def web_scrape(ctx, *, url):
 
 @_bot.slash_command(description="See the job board")
 async def jobs(ctx):
-    with open('jobs.json', 'r') as file:
+    with open('jobs.json', 'r', encoding='utf-8') as file:
         jobs = json.load(file)
 
     embed = disnake.Embed(title="Jobs")
@@ -2396,7 +1522,7 @@ async def jobs(ctx):
 @commands.cooldown(1, 30, commands.BucketType.user)
 async def crypto(ctx):
     try:
-        with open('account.json', 'r') as file:
+        with open('account.json', 'r', encoding='utf-8') as file:
             data = json.load(file)
     
         await open_account(ctx)
@@ -2438,7 +1564,7 @@ async def crypto_error(ctx, error):
 
 @_bot.slash_command(description="Redeem an amount of crypto currency you have")
 async def redeem(ctx, amount):
-    with open('account.json', 'r') as file:
+    with open('account.json', 'r', encoding='utf-8') as file:
         data = json.load(file)
     await open_account(ctx)
     crpt = data[str(ctx.author.id)]['Crypto']
@@ -2459,7 +1585,7 @@ async def redeem(ctx, amount):
 
 @_bot.slash_command(description="Open the shop")
 async def shop(ctx):
-    with open('shop.json', 'r') as file:
+    with open('shop.json', 'r', encoding='utf-8') as file:
         items = json.load(file)
 
     embed = disnake.Embed(title="Shop")
@@ -2473,10 +1599,10 @@ async def shop(ctx):
 async def buy(ctx, code):
     await open_account(ctx)
     
-    with open('account.json', 'r') as f:
+    with open('account.json', 'r', encoding='utf-8') as f:
         data = json.load(f)
 
-    with open('shop.json', 'r') as file:
+    with open('shop.json', 'r', encoding='utf-8') as file:
         items = json.load(file)
     
     for item in items:
@@ -2502,12 +1628,12 @@ async def buy(ctx, code):
             pass
 
 async def kali_installed(ctx):
-    with open('account.json', 'r') as file:
+    with open('account.json', 'r', encoding='utf-8') as file:
         data = json.load(file)
     
     if "Kali linux <:kali:1003630422560886905>" in data[str(ctx.author.id)]["Inventory"]:
         print("KALI IN")
-        with open("login.json", 'r') as file2:
+        with open("login.json", 'r', encoding='utf-8') as file2:
             data2 = json.load(file2)
         data2[str(ctx.author.id)]["OS"].clear()
         data2[str(ctx.author.id)]["OS"].append("Kali linux <:kali:1003630422560886905>")
@@ -2524,11 +1650,11 @@ async def kali_installed(ctx):
 
 @_bot.event 
 async def win10_installed(ctx):
-    with open('account.json', 'r') as file:
+    with open('account.json', 'r', encoding='utf-8') as file:
         data = json.load(file)
     
     if "Windows 10 <:windows_10:1003626037713842228>" in data[str(ctx.author.id)]["Inventory"]:
-        with open("login.json", 'r') as file2:
+        with open("login.json", 'r', encoding='utf-8') as file2:
             data2 = json.load(file2)
         data2[str(ctx.author.id)]["OS"].clear()
         data2[str(ctx.author.id)]["OS"].append("Windows 10 <:windows_10:1003626037713842228>")
@@ -2569,7 +1695,7 @@ async def subjects(ctx):
     await ctx.send(embed=embed)
 
 async def learning_points(user):
-    with open('learning_points.json', 'r') as file:
+    with open('learning_points.json', 'r', encoding='utf-8') as file:
         data = json.load(file)
 
     if str(user.author.id) in data:
@@ -2591,7 +1717,7 @@ async def learning_points(user):
 @commands.cooldown(1, 3600, commands.BucketType.user)
 async def learn(ctx, subject):
     await learning_points(ctx)
-    with open('learning_points.json', 'r') as file:
+    with open('learning_points.json', 'r', encoding='utf-8') as file:
         data = json.load(file)
     
     if subject == "Physics":
@@ -2657,7 +1783,7 @@ async def learn_error(ctx, error):
 @_bot.slash_command(description="Get top 3 richest people")
 async def top(ctx,x=3):
     await open_account(ctx)
-    with open('account.json', 'r') as file:
+    with open('account.json', 'r', encoding='utf-8') as file:
         users = json.load(file)
 
     leader_board = {}
@@ -2687,7 +1813,7 @@ async def top(ctx,x=3):
 @_bot.slash_command(description="Check how much learning points you got in every subject")
 async def learnpoints(ctx):
     await learning_points(ctx)
-    with open('learning_points.json', 'r') as file:
+    with open('learning_points.json', 'r', encoding='utf-8') as file:
         data = json.load(file)
 
     p = data[str(ctx.author.id)]['Physics']
@@ -2761,39 +1887,10 @@ async def level(ctx):
     card = disnake.File(fp=background.image_bytes, filename="zCARD.png")
     await ctx.send(file=card)
             
-@_bot.slash_command(description="Turn your pfp into ascii art")
-async def ascii(ctx):
-    author = ctx.message.author
-    await author.avatar_url.save('avatar.jpg')
-    img_flag = True
- 
-    img = PIL.Image.open('avatar.jpg')
-    img_flag = True
- 
-    width, height = img.size
-    aspect_ratio = height/width
-    new_width = 120
-    new_height = aspect_ratio * new_width * 0.55
-    img = img.resize((new_width, int(new_height)))
-    img = img.convert('L')
- 
-    chars = ["@", "J", "D", "%", "*", "P", "+", "Y", "$", ",", "."]
- 
-    pixels = img.getdata()
-    new_pixels = [chars[pixel//25] for pixel in pixels]
-    new_pixels = ''.join(new_pixels)
-    new_pixels_count = len(new_pixels)
-    ascii_image = [new_pixels[index:index + new_width] for index in range(0, new_pixels_count, new_width)]
-    ascii_image = "\n".join(ascii_image)
- 
-    with open("ascii_image.txt", "w") as f:
-        f.write(ascii_image)
-    
-    await ctx.send(file=disnake.File('ascii_image.txt'))
 
 async def xp(ctx, amt):
     await open_account(ctx)
-    with open('account.json', 'r') as file:
+    with open('account.json', 'r', encoding='utf-8') as file:
         data = json.load(file)  
     
     if ctx.author != _bot.user:
@@ -2837,7 +1934,7 @@ async def lvl(message):
 
                             mbed = disnake.Embed(title=f"{message.author} You Have Gotten role **{level[i]}**!", color = message.author.colour)
                             mbed.set_thumbnail(url=message.author.avatar_url)
-                            with open('setup.json', 'r') as file:
+                            with open('setup.json', 'r', encoding='utf-8') as file:
                                 dddd = json.load(file)
                             c = _bot.get_channel(dddd[str(message.guild.id)]['level'])
                             await c.send(embed=mbed)
@@ -2869,7 +1966,7 @@ async def lvl(message):
 
                             mbed = disnake.Embed(title=f"{message.author} You Have Gotten role **{level[i]}**!", color = message.author.colour)
                             mbed.set_thumbnail(url=message.author.avatar_url)
-                            with open('setup.json', 'r') as file:
+                            with open('setup.json', 'r', encoding='utf-8') as file:
                                 dddd = json.load(file)
                             c = _bot.get_channel(dddd[str(message.guild.id)]['level'])
                             await c.send(embed=mbed)
@@ -2878,7 +1975,7 @@ async def lvl(message):
 '''async def lvldetect(ctx):
     if not ctx.author.bot:
         await open_account(ctx)
-        with open('account.json', 'r') as file:
+        with open('account.json', 'r', encoding='utf-8') as file:
             data = json.load(file) 
     
         xp = data[str(ctx.author.id)]["XP"]
@@ -2891,7 +1988,7 @@ async def lvl(message):
 
 @_bot.slash_command(description="Get an programming meme")
 async def pmeme(ctx):
-    images = os.path.join(os.getcwd(), "/media/codeinstein/Main/projects/bt/memes/")
+    images = os.path.join(os.getcwd(), "memes")
     fil = os.path.join(images, random.choice(os.listdir(images)))
     await ctx.send(file=disnake.File(fil))
 
@@ -2914,234 +2011,26 @@ async def fact(ctx):
 
 @_bot.slash_command(description="Get an cool image")
 async def pic(ctx):
-    images = os.path.join(os.getcwd(), "/media/codeinstein/Main/projects/bt/scifi/")
+    images = os.path.join(os.getcwd(), "scifi")
     fil = os.path.join(images, random.choice(os.listdir(images)))
     await ctx.send(file=disnake.File(fil))
 
-@tasks.loop(seconds=5)
-async def play_song(ctx, ch, channel,l):
-  voice = disnake.utils.get(_bot.voice_clients, guild=ctx.guild) 
-  global song_url
-  #print(song_url)
-  url=song_url[0]
-  if not ch.is_playing() and not voice == None :
-    try: 
-      ydl_opts = {'format': 'bestaudio/best'}
-      with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(url, download=False)
-        video_title = info.get('title', None)
-        URL = info['formats'][0]['url']
-      ch.play(disnake.FFmpegPCMAudio(URL, **FFMPEG_OPTIONS))
-      text = embedding(f" Playing :{video_title}")
-      await ctx.send(embed=text, delete_after=60.0)
-      song_played.append(song_url[0])
-      song_url.pop(0)
-    except:
-      await ctx.send("Check your internet connection")
-  if len(song_url) == 0:
-    for i in range(0,len(song_played)):
-      song_url.append(song_played[i])
-    
-    song_played.clear()
-
-@_bot.slash_command(description='Skip an song')
-async def skip(ctx):
-  ch=chvc[0]
-  ch.stop()
-
-@_bot.slash_command(description="Set the volume")
-async def volume(ctx, x: int):
-  y=x/100
-  vc = disnake.utils.get(client.voice_clients, guild=ctx.guild)
-  vc.source = disnake.PCMVolumeTransformer(vc.source)
-  vc.source.volume = y
-  text = disnake.Embed(
-  title= "**Volume**",
-  description = f" Volume set to {int(x)} ",
-  color= random.choice(colors),
-  )
-  await ctx.send(embed=text)
-
-
-@_bot.slash_command(description='Play music, add the music first then play it, add music when not in vc')
-async def play(ctx, channel='General'):
- 
- #joining the desired channel
-  voice = disnake.utils.get(_bot.voice_clients, guild=ctx.guild) 
-  channel = disnake.utils.get(ctx.guild.voice_channels, name=channel)
-  if voice == None:
-    await ctx.send(f"Joined **{channel}**")
-  else:
-    await ctx.voice_client.disconnect()
-  ch = await channel.connect()
-  if(len(chvc)!=0):
-    chvc.pop(0)
-  chvc.append(ch)
-  print(chvc)
-  await ctx.send(f"Playing on **{channel}** Channel")
-  
-  #get the number of songs and if none is present it will show up a message
-  n = len(song_url)
-  if not n==0:
-    n=n-1
-    play_song.start(ctx, ch, channel,n)
-  else:
-    text = disnake.Embed(
-    title= "**No Music**",
-    description = "There is no music to play\nUse /add <url> to add a music",
-    color= random.choice(colors)
-    )
-    await ctx.send(embed=text)
-    
-
-
-#add music
-@_bot.slash_command(description='Use youtube link to add your music')
-async def add(ctx, * ,searched_song):
-  print(searched_song)
-
-  videosSearch = VideosSearch(searched_song, limit = 1)
-  result_song_list = videosSearch.result()
-  # print(result_song_list)
-  title_song = result_song_list['result'][0]['title']
-  urllink = result_song_list['result'][0]['link']
-
-  song_url.append(urllink)
-  text = disnake.Embed(
-  title= "**Song Added**",
-  description = f"{title_song} is added to the Queue\nLink : {urllink}",
-  color= random.choice(colors),
-  )
-  # text.add_image(url=f"{result_song_list['result'][0]['thumbnail']['url']}")
-  await ctx.send(embed=text)
-  # await ctx.send(f"LINK : {urllink} ADDED")
-  
-@_bot.slash_command(description="Stop the music")
-async def stop(ctx):
-    voice = disnake.utils.get(_bot.voice_clients, guild=ctx.guild) 
-    if voice == None:
-      return
-    await ctx.voice_client.disconnect()
-    play_song.stop()
-    for i in range(0,len(song_played)):
-      song_url.append(song_played[i])
-    await ctx.send("Have left the channel")
-
-@_bot.slash_command(description="See the queue")
-async def queue(ctx):
-  l=len(song_url)
-  if(l==0):
-    await ctx.send("No music to play")
-  for i in range(0,l):
-      videosSearch = VideosSearch(song_url[i], limit = 1)
-      result_song_list = videosSearch.result()
-      # print(result_song_list)
-      title_song = result_song_list['result'][0]['title']
-      text = disnake.Embed(
-      description = f"{i+1} Song Name : {title_song} ",
-      color= random.choice(colors),
-      )
-      await ctx.send(embed=text)
-
-@_bot.slash_command(description="Clear the queue")
-async def clear(ctx):
-  song_url.clear()
-  text= disnake.Embed(
-  description="**Playlist cleared**",
-  color = random.choice(colors),
-  )
-  await ctx.send(embed=text)
-
-@_bot.slash_command(description="Remove an specific song")
-async def remove(ctx,x: int):
-  x=x-1
-  videosSearch = VideosSearch(song_url[x], limit = 1)
-  result_song_list = videosSearch.result()
-  title_song = result_song_list['result'][0]['title']
-  text= embedding(f"{title_song} Removed")
-  await ctx.send(embed=text)
-  song_url.pop(x)
-
-def embedding(text: str):
-  text= disnake.Embed(
-  description=f"**{text}**",
-  color = 53380,
-  )
-  return(text)
-
 @_bot.slash_command(description="Get an random truth question")
 async def truth(ctx):
-    lines = open("truth.txt").read().splitlines()
+    lines = open("truth.txt", encoding='utf-8').read().splitlines()
     embed = disnake.Embed(color=random.choice(colors))
     embed.add_field(name='Truth question', value=random.choice(lines))
     await ctx.send(embed=embed)
 
 @_bot.slash_command(description="Get an compliment")
 async def compliment(ctx):
-    lines = open("compliments.txt").read().splitlines()
+    lines = open("compliments.txt",  encoding='utf-8').read().splitlines()
     embed = disnake.Embed(color=random.choice(colors))
     embed.add_field(name='Compliment', value=random.choice(lines))
     await ctx.send(embed=embed)
 
-@_bot.slash_command(description="Solve an linear equation")
-async def lineq(ctx, expression1: str, value1: int, expression2: str, value2: int):
-    x, y = symbols('x y')
-    eq1 = Eq(expression1, value1)
-    eq2 = Eq(expression2, value2)
-    await ctx.send(solve((eq1, eq2), (x, y)))
-
-@_bot.slash_command(description="Search for element information, only symbol will work")
-async def elem(ctx, sign):
-    p = Element(sign)
-    atomnum = p.properties['AtomicNumber']
-    atomass = p.properties['AtomicMass']
-    neutrons = p.properties['Neutrons']
-    protons = p.properties['Protons']
-    period = p.properties['Period']
-    grp = p.properties['Group']
-    phase = p.properties['Phase']
-    radiation = p.properties['Radioactive']
-    natural = p.properties['Natural']
-    typ = p.properties['Type']
-    atomr = p.properties['AtomicRadius']
-    electneg = p.properties['Electronegativity']
-    dense = p.properties['Density']
-    meltpoint = p.properties['MeltingPoint']
-    boilpint = p.properties['BoilingPoint']
-    founder = p.properties['Discoverer']
-    foundate = p.properties['Year'] 
-    embed = disnake.Embed(description=f"**Elment {p.properties['Element']} information**",color = random.choice(colors))
-    embed.add_field(name='Atomic number', value=atomnum)
-    embed.add_field(name='Atomic mass', value=atomass)
-    embed.add_field(name='Number of neutrons', value=neutrons)
-    embed.add_field(name='Number of protons', value=protons)
-    embed.add_field(name='Period', value=period)
-    embed.add_field(name='Group', value=grp)
-    embed.add_field(name='Phase', value=phase)
-    embed.add_field(name='Radioactive', value=radiation)
-    embed.add_field(name='Is natural element', value=natural)
-    embed.add_field(name='Type', value=typ)
-    embed.add_field(name='Atomic radius', value=atomr)
-    embed.add_field(name='Electronegativity', value=electneg)
-    embed.add_field(name='Density', value=dense)
-    embed.add_field(name='Melting point', value=meltpoint)
-    embed.add_field(name='Boiling point', value=boilpint)
-    embed.add_field(name='Founder', value=founder)
-    embed.add_field(name='Year of foundation', value=foundate)
-    await ctx.send(embed=embed)
-
-@_bot.slash_command(description='Get the output of reaction between two compounds')
-async def compound(ctx, compound, quantity: int):
-    c = Compound(compound)
-    g = c.get_amounts(grams=quantity)
-    embed = disnake.Embed(description=f"**Compund {c.formula}, taking {quantity} Grams of it**", color = random.choice(colors))
-    embed.add_field(name='Grams', value=g['grams'])
-    embed.add_field(name='Moles', value=g['moles'])
-    embed.add_field(name='Molecules', value=g['molecules'])
-    await ctx.send(embed=embed)
-
 async def loan_payment(user):
-    with open('loan.json', 'r') as file:
+    with open('loan.json', 'r', encoding='utf-8') as file:
         data = json.load(file)  
 
     if str(user.author.id) in data:
@@ -3156,7 +2045,7 @@ async def loan_payment(user):
 
 @_bot.event
 async def loan_payment_process(ctx):
-    with open('loan.json', 'r') as file:
+    with open('loan.json', 'r', encoding='utf-8') as file:
         data = json.load(file)
     
     if data[str(ctx.author.id)]['Loan'] == 0:
@@ -3165,7 +2054,7 @@ async def loan_payment_process(ctx):
     else:
         await asyncio.sleep(259200)
         
-        with open("account.json", 'r') as data2:
+        with open("account.json", 'r', encoding='utf-8') as data2:
             file2 = json.load(data2)
         
         if file2[str(ctx.author.id)]["Crypto"] != 0:
@@ -3189,11 +2078,11 @@ async def loan_payment_process(ctx):
                 
 @_bot.slash_command(description="Pay amount for your loan")
 async def pay(ctx, amount: int):
-    with open("account.json", 'r') as file2:
+    with open("account.json", 'r', encoding='utf-8') as file2:
         data2 = json.load(file2)
     
     if data2[str(ctx.author.id)]['Bank'] >= 10000:
-        with open("loan.json", 'r') as file:
+        with open("loan.json", 'r', encoding='utf-8') as file:
             data = json.load(file)
         
         if amount <= data2[str(ctx.author.id)]['Bank'] :
@@ -3222,14 +2111,14 @@ async def pay(ctx, amount: int):
 
 @_bot.slash_command(description="Get some dad jokes")
 async def dadjokes(ctx):
-    lines = open("dadjokes.txt").read().splitlines()
+    lines = open("dadjokes.txt", encoding='utf-8').read().splitlines()
     embed = disnake.Embed(color=random.choice(colors))
     embed.add_field(name='Dad joke', value=random.choice(lines))
     await ctx.send(embed=embed)
 
 @_bot.slash_command(description="Check how much of your loan is left")
 async def lend(ctx):
-    with open("loan.json", 'r') as file:
+    with open("loan.json", 'r', encoding='utf-8') as file:
         data = json.load(file)
     
     embed = disnake.Embed(title='Your loan', color=random.choice(colors))
@@ -3238,10 +2127,10 @@ async def lend(ctx):
 
 @_bot.slash_command(description="Take loan from bank")
 async def loan(ctx, amount: int):
-    with open('account.json', 'r') as file:
+    with open('account.json', 'r', encoding='utf-8') as file:
         data = json.load(file)
     
-    with open('loan.json', 'r') as file2:
+    with open('loan.json', 'r', encoding='utf-8') as file2:
         data2 = json.load(file2)
     
     if data[str(ctx.author.id)]["Bank"] <= 10000:
@@ -3268,7 +2157,7 @@ async def loan(ctx, amount: int):
             json.dump(data2, file2)
 
 async def busines(user):
-    with open('business.json', 'r') as file:
+    with open('business.json', 'r',encoding='utf-8') as file:
         data = json.load(file)  
 
     if str(user.author.id) in data:
@@ -3285,9 +2174,9 @@ class Spacelab(disnake.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
 
-    @disnake.ui.button(label="Self destruction", style=ButtonStyle.blue)
+    @disnake.ui.button(label="Self destruction", style=disnake.ButtonStyle.blurple)
     async def dest(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction):
-        with open('business.json', 'r') as file:
+        with open('business.json', 'r', encoding='utf-8') as file:
             data = json.load(file) 
         
         data[str(interaction.user.id)]['Facilities'].remove("Space research sector 🔭")
@@ -3301,9 +2190,9 @@ class Radlab(disnake.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
 
-    @disnake.ui.button(label="Self destruction", style=ButtonStyle.blue)
+    @disnake.ui.button(label="Self destruction", style=disnake.ButtonStyle.blurple)
     async def dest(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction):
-        with open('business.json', 'r') as file:
+        with open('business.json', 'r', encoding='utf-8') as file:
             data = json.load(file) 
         
         data[str(interaction.user.id)]['Facilities'].remove("Radiation sector ☣")
@@ -3317,9 +2206,9 @@ class Biolab(disnake.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
 
-    @disnake.ui.button(label="Self destruction", style=ButtonStyle.blue)
+    @disnake.ui.button(label="Self destruction", style=disnake.ButtonStyle.blurple)
     async def dest(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction):
-        with open('business.json', 'r') as file:
+        with open('business.json', 'r', encoding='utf-8') as file:
             data = json.load(file) 
         
         data[str(interaction.user.id)]['Facilities'].remove("Bio-Lab sector 🦠")
@@ -3333,12 +2222,12 @@ class Business(disnake.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
 
-    @disnake.ui.button(label="Get money", style=ButtonStyle.blue)
+    @disnake.ui.button(label="Get money", style=disnake.ButtonStyle.blurple)
     async def money(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction):
-        with open('business.json', 'r') as file:
+        with open('business.json', 'r', encoding='utf-8') as file:
             data = json.load(file)  
         
-        with open("account.json", 'r') as file2:
+        with open("account.json", 'r', encoding='utf-8') as file2:
             data2 = json.load(file2)
         
         data2[str(interaction.user.id)]["Bank"] += data[str(interaction.user.id)]["Income"]
@@ -3348,14 +2237,14 @@ class Business(disnake.ui.View):
         
         await interaction.response.send_message(f"You have earned {data[str(interaction.user.id)]['Income']} <:nerd_coin:992265892756979735>")
     
-    @disnake.ui.button(label="Bio-Lab sector 🦠", style=ButtonStyle.blue)
+    @disnake.ui.button(label="Bio-Lab sector 🦠", style=disnake.ButtonStyle.blurple)
     async def bio_lab(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction):
-        with open('business.json', 'r') as file:
+        with open('business.json', 'r', encoding='utf-8') as file:
             data = json.load(file)
 
         if "Bio-Lab sector 🦠" not in data[str(interaction.user.id)]["Facilities"]:
         
-            with open("account.json", 'r') as file2:
+            with open("account.json", 'r', encoding='utf-8') as file2:
                 data2 = json.load(file2)
         
             if data2[str(interaction.user.id)]["Bank"] >= 500000:
@@ -3374,20 +2263,20 @@ class Business(disnake.ui.View):
                 await interaction.response.send_message("You need to have 500000 <:nerd_coin:992265892756979735>")
 
         else:          
-            with open('business.json', 'r') as file:
+            with open('business.json', 'r', encoding='utf-8') as file:
                 data = json.load(file)  
             
             embed = disnake.Embed(title="Bio-Lab sector 🦠", color=random.choice(colors))
-            await interaction.response.send_message(embed=embed, view=Biolab(), file=disnake.File('/media/codeinstein/Main/projects/bt/biolab.jpeg'))
+            await interaction.response.send_message(embed=embed, view=Biolab(), file=disnake.File('biolab.jpeg'))
     
-    @disnake.ui.button(label="Radiation sector ☣", style=ButtonStyle.blue)
+    @disnake.ui.button(label="Radiation sector ☣", style=disnake.ButtonStyle.blurple)
     async def rad(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction):
-        with open('business.json', 'r') as file:
+        with open('business.json', 'r', encoding='utf-8') as file:
             data = json.load(file)
 
         if "Radiation sector ☣" not in data[str(interaction.user.id)]["Facilities"]:
         
-            with open("account.json", 'r') as file2:
+            with open("account.json", 'r', encoding='utf-8') as file2:
                 data2 = json.load(file2)
         
             if data2[str(interaction.user.id)]["Bank"] >= 600000:
@@ -3406,20 +2295,20 @@ class Business(disnake.ui.View):
                 await interaction.response.send_message("You need to have 600000 <:nerd_coin:992265892756979735>")
 
         else:          
-            with open('business.json', 'r') as file:
+            with open('business.json', 'r', encoding='utf-8') as file:
                 data = json.load(file)  
             
             embed = disnake.Embed(title="Radiation sector ☣", color=random.choice(colors))
-            await interaction.response.send_message(embed=embed, view=Radlab(), file=disnake.File('/media/codeinstein/Main/projects/bt/radlab.jpeg'))
+            await interaction.response.send_message(embed=embed, view=Radlab(), file=disnake.File('radlab.jpeg'))
     
-    @disnake.ui.button(label="Space research sector 🔭", style=ButtonStyle.blue)
+    @disnake.ui.button(label="Space research sector 🔭", style=disnake.ButtonStyle.blurple)
     async def sp(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction):
-        with open('business.json', 'r') as file:
+        with open('business.json', 'r', encoding='utf-8') as file:
             data = json.load(file)
 
         if "Space research sector 🔭" not in data[str(interaction.user.id)]["Facilities"]:
         
-            with open("account.json", 'r') as file2:
+            with open("account.json", 'r', encoding='utf-8') as file2:
                 data2 = json.load(file2)
         
             if data2[str(interaction.user.id)]["Bank"] >= 700000:
@@ -3438,25 +2327,24 @@ class Business(disnake.ui.View):
                 await interaction.response.send_message("You need to have 700000 <:nerd_coin:992265892756979735>")
 
         else:          
-            with open('business.json', 'r') as file:
+            with open('business.json', 'r', encoding='utf-8') as file:
                 data = json.load(file)  
             
             embed = disnake.Embed(title="Space research sector 🔭", color=random.choice(colors))
-            await interaction.response.send_message(embed=embed, view=Spacelab(), file=disnake.File('/media/codeinstein/Main/projects/bt/spacelab.jpeg'))
+            await interaction.response.send_message(embed=embed, view=Spacelab(), file=disnake.File('spacelab.jpeg'))
 
 @_bot.slash_command(description='Start your own business')
 async def business(ctx):
-    with open("account.json", 'r') as file:
+    with open("account.json", 'r', encoding='utf-8') as file:
         data = json.load(file)
     
-    with open("business.json", 'r') as file2:
+    with open("business.json", 'r', encoding='utf-8') as file2:
         data2 = json.load(file2)
     
     if data[str(ctx.author.id)]["Bank"] >= 10000000:
         if str(ctx.author.id) in data2:
             color = disnake.Color(value=random.choice(colors))
             embed = disnake.Embed(title=f"{ctx.author}'s Company", color=color)
-            embed.add_field(name="Recruits", value=data2[str(ctx.author.id)]["rec"])
             embed.add_field(name="Income", value=data2[str(ctx.author.id)]["Income"])
             await ctx.send(embed=embed, view=Business())
         
@@ -3471,7 +2359,7 @@ async def business(ctx):
         await ctx.send("You need to have at least 10 millions of <:nerd_coin:992265892756979735> to start your own business")
 
 async def spem(user):
-    with open('spam.json', 'r') as file:
+    with open('spam.json', 'r', encoding='utf-8') as file:
         data = json.load(file)  
 
     if str(user.guild.id) in data:
@@ -3486,7 +2374,7 @@ async def spem(user):
 
 @_bot.slash_command(description="Set the level messages channel")
 async def levlog(ctx, channel_id):
-    with open("setup.json", 'r') as file:
+    with open("setup.json", 'r', encoding='utf-8') as file:
         data = json.load(file)
     
     if len(data[str(ctx.guild.id)]["level"]) == 0:
@@ -3508,7 +2396,7 @@ async def levlog(ctx, channel_id):
 async def spam(ctx):   
     await spem(ctx)
     
-    with open('spam.json', 'r') as file:
+    with open('spam.json', 'r', encoding='utf-8') as file:
         data = json.load(file)  
     if 1 in data[str(ctx.guild.id)]['Spam']:
         data[str(ctx.guild.id)]['Spam'][0] += 1
@@ -3533,7 +2421,7 @@ async def spam(ctx):
 
 @_bot.slash_command(description="Send money to someone")
 async def send(ctx, member: disnake.Member, amount: int):
-    with open("account.json", 'r') as file:
+    with open("account.json", 'r', encoding='utf-8') as file:
         data = json.load(file)
     
     if amount >= data[str(ctx.author.id)]['Bank']:
@@ -3549,7 +2437,7 @@ async def send(ctx, member: disnake.Member, amount: int):
 
 @_bot.event
 async def on_message(message):
-        with open('spam.json', 'r') as file:
+        with open('spam.json', 'r', encoding='utf-8') as file:
             data = json.load(file)  
     
         await spem(message)
@@ -3579,12 +2467,12 @@ async def on_message(message):
                     em = disnake.Embed(color=color, title=f"WARNING: by The Nerd from **{message.guild.name}**.",   description="You need to stop spamming")
                     await message.author.send(embed=em)
                     try:
-                        await message.send(f"{message.author.mention} has been kicked")
+                        await message.channel.send(f"{message.author.mention} has been kicked")
                         await message.author.kick()
                     except disnake.Forbidden:
-                        await message.send("I don't have banning permissions")
+                        await message.channel.send("I don't have banning permissions")
                     except disnake.ext.commands.MissingPermissions:
-                        await message.send("Sorry, you don't have permission to run this command")
+                        await message.channel.send("Sorry, you don't have permission to run this command")
                 
                 if not message.author.bot:
                     await open_account(message)
@@ -3614,4 +2502,4 @@ async def on_message(message):
 
         await _bot.process_commands(message)
 
-_bot.run("replace with your token")      
+_bot.run(Your token")      
