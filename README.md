@@ -49,5 +49,3 @@ Go to last line in *main.py* file and paste your token in the brackets.
 - /business, Start and navigate your business
 - /lend, Check how much loan is left
 - /send member amount, Send money to someone
-
-**If you are using this bot in your own project then give credit**
