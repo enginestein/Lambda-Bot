@@ -2717,4 +2717,4 @@ async def on_message(message):
 
         await _bot.process_commands(message)
 
-_bot.run("MTAxNzk3NTYwODk0MjI2ODQxNg.Glp9n4.JnhDwL9ZB8d6Az50CipFP-gDBtT_M0LiMBYKRc")      
+_bot.run("Your token here")      
