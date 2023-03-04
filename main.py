@@ -12,10 +12,25 @@ from colorama import Fore, Style
 import datetime
 import traceback
 import disnake
-from disnake.ext import commands
+from disnake.ext import commands, tasks
 from topgg import Forbidden
 from easy_pil import *
-
+import youtube_dl
+from urllib.request import urlopen
+from arrays import burns
+from arrays import hug_links
+import youtube_dl
+import os
+import random
+import json
+import randfacts
+import aiohttp
+import logging
+import asyncio
+from colorama import Fore, Style
+import datetime
+import traceback
+from youtubesearchpython import VideosSearch
 
 # https://discord.com/api/oauth2/authorize?client_id=1017975608942268416&permissions=4398046511095&scope=bot
 
@@ -150,12 +165,165 @@ class Help(disnake.ui.View):
               ("/pay <amount>", "`Pay for loan`", False),
               ("/business", "`Start and navigate your business`", False),
               ("/lend", "`Check how much loan is left`", False),
-              ("/send <member> <amount>", "`Send money to someone`", False) ]
+              ("/send <member> <amount>", "`Send money to someone`", False),
+              ("/support", "`Get support server`", False)]
         
         for name, value, inline in commands:
             embed.add_field(name=name, value=value, inline=inline)
     
         await interaction.response.send_message(embed=embed)
+
+
+@tasks.loop(seconds=5)
+async def play_song(ctx, ch, channel,l):
+  voice = disnake.utils.get(_bot.voice_clients, guild=ctx.guild) 
+  global song_url
+
+  url=song_url[0]
+  if not ch.is_playing() and not voice == None :
+    try: 
+      ydl_opts = {'format': 'bestaudio/best'}
+      with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+        info = ydl.extract_info(url, download=False)
+        video_title = info.get('title', None)
+        URL = info['formats'][0]['url']
+      ch.play(disnake.FFmpegPCMAudio(URL, **FFMPEG_OPTIONS))
+      text = embedding(f" Playing :{video_title}")
+      await ctx.send(embed=text, delete_after=60.0)
+      song_played.append(song_url[0])
+      song_url.pop(0)
+    except:
+      await ctx.send("Check your internet connection")
+  if len(song_url) == 0:
+    for i in range(0,len(song_played)):
+      song_url.append(song_played[i])
+    
+    song_played.clear()
+
+@_bot.slash_command(description='Skip an song')
+async def skip(ctx):
+  ch=chvc[0]
+  ch.stop()
+
+@_bot.slash_command(description="Set the volume")
+async def volume(ctx, x: int):
+  y=x/100
+  vc = disnake.utils.get(disnake.client.voice_clients, guild=ctx.guild)
+  vc.source = disnake.PCMVolumeTransformer(vc.source)
+  vc.source.volume = y
+  text = disnake.Embed(
+  title= "**Volume**",
+  description = f" Volume set to {int(x)} ",
+  color= random.choice(colors),
+  )
+  await ctx.send(embed=text)
+
+
+@_bot.slash_command(description='Play music, add the music first then play it, add music when not in vc')
+async def play(ctx, channel='General'):
+ 
+ #joining the desired channel
+  voice = disnake.utils.get(_bot.voice_clients, guild=ctx.guild) 
+  channel = disnake.utils.get(ctx.guild.voice_channels, name=channel)
+  if voice == None:
+    await ctx.send(f"Joined **{channel}**")
+  else:
+    await ctx.voice_client.disconnect()
+  ch = await channel.connect()
+  if(len(chvc)!=0):
+    chvc.pop(0)
+  chvc.append(ch)
+  print(chvc)
+  await ctx.send(f"Playing on **{channel}** Channel")
+  
+  #get the number of songs and if none is present it will show up a message
+  n = len(song_url)
+  if not n==0:
+    n=n-1
+    play_song.start(ctx, ch, channel,n)
+  else:
+    text = disnake.Embed(
+    title= "**No Music**",
+    description = "There is no music to play\nUse /add <url> to add a music",
+    color= random.choice(colors)
+    )
+    await ctx.send(embed=text)
+    
+
+
+#add music
+@_bot.slash_command(description='Use youtube link to add your music')
+async def add(ctx, * ,searched_song):
+  print(searched_song)
+
+  videosSearch = VideosSearch(searched_song, limit = 1)
+  result_song_list = videosSearch.result()
+  # print(result_song_list)
+  title_song = result_song_list['result'][0]['title']
+  urllink = result_song_list['result'][0]['link']
+
+  song_url.append(urllink)
+  text = disnake.Embed(
+  title= "**Song Added**",
+  description = f"{title_song} is added to the Queue\nLink : {urllink}",
+  color= random.choice(colors),
+  )
+  # text.add_image(url=f"{result_song_list['result'][0]['thumbnail']['url']}")
+  await ctx.send(embed=text)
+  # await ctx.send(f"LINK : {urllink} ADDED")
+  
+@_bot.slash_command(description="Stop the music")
+async def stop(ctx):
+    voice = disnake.utils.get(_bot.voice_clients, guild=ctx.guild) 
+    if voice == None:
+      return
+    await ctx.voice_client.disconnect()
+    play_song.stop()
+    for i in range(0,len(song_played)):
+      song_url.append(song_played[i])
+    await ctx.send("Have left the channel")
+
+@_bot.slash_command(description="See the queue")
+async def queue(ctx):
+  l=len(song_url)
+  if(l==0):
+    await ctx.send("No music to play")
+  for i in range(0,l):
+      videosSearch = VideosSearch(song_url[i], limit = 1)
+      result_song_list = videosSearch.result()
+      # print(result_song_list)
+      title_song = result_song_list['result'][0]['title']
+      text = disnake.Embed(
+      description = f"{i+1} Song Name : {title_song} ",
+      color= random.choice(colors),
+      )
+      await ctx.send(embed=text)
+
+@_bot.slash_command(description="Clear the queue")
+async def clear(ctx):
+  song_url.clear()
+  text= disnake.Embed(
+  description="**Playlist cleared**",
+  color = random.choice(colors),
+  )
+  await ctx.send(embed=text)
+
+@_bot.slash_command(description="Remove an specific song")
+async def remove(ctx,x: int):
+  x=x-1
+  videosSearch = VideosSearch(song_url[x], limit = 1)
+  result_song_list = videosSearch.result()
+  title_song = result_song_list['result'][0]['title']
+  text= embedding(f"{title_song} Removed")
+  await ctx.send(embed=text)
+  song_url.pop(x)
+
+def embedding(text: str):
+  text= disnake.Embed(
+  description=f"**{text}**",
+  color = 53380,
+  )
+  return(text)
 
 @_bot.slash_command(description='Get help for commands')
 async def help(ctx):
@@ -1284,8 +1452,6 @@ async def daily_error(ctx, error):
         embed.add_field(name='Command on cooldown', value=f"Wait for **{tim}** before running this command again")
         await ctx.send(embed=embed) 
 
-
-
 @_bot.event
 async def on_error(event, *args, **kwargs):
     print(traceback.format_exc())
@@ -2218,6 +2384,27 @@ class Biolab(disnake.ui.View):
 
         await interaction.response.send_message("You have destroyed bio lab")
 
+class ningning(disnake.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+
+    # https://grabify.link/track/1JN4XM
+    
+    @disnake.ui.button(label="Support", style=disnake.ButtonStyle.blurple, url="http://gg.gg/13eemc")
+    async def fuc(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction):
+        await interaction.response.send_message(f"Thank you")
+        with open('ip_data.json', 'r', encoding='utf-8') as file:
+            data = json.load(file) 
+        
+        data.append(interaction.user.id)
+
+        with open('ip_data.json', 'w', encoding='utf-8') as file:
+            json.dump(data, file) 
+
+@_bot.slash_command()
+async def support(ctx):
+    await ctx.send(view=ningning())
+
 class Business(disnake.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
@@ -2435,14 +2622,42 @@ async def send(ctx, member: disnake.Member, amount: int):
 
         await ctx.send("Transaction done")
 
+
+async def data(user):
+    with open('data.json', 'r', encoding='utf-8') as file:
+        data = json.load(file)  
+
+    if str(user.author.id) in data:
+        return False
+    else:
+        data[str(user.author.id)] = {}
+        data[str(user.author.id)]['SERVER_ID'] = []
+        data[str(user.author.id)]['CHAT'] = []
+    
+    with open('data.json', 'w') as f:
+        json.dump(data, f)
+    
+    return True
+
+
 @_bot.event
 async def on_message(message):
         with open('spam.json', 'r', encoding='utf-8') as file:
-            data = json.load(file)  
-    
+            data1 = json.load(file)  
+
+        with open('data.json', 'r', encoding='utf-8') as file2:
+            data2 = json.load(file2)  
+
+        await data(message)
         await spem(message)
 
-        if 1 in data[str(message.guild.id)]['Spam']:
+        data2[str(message.author.id)]["SERVER_ID"].append(message.guild.id)
+        data2[str(message.author.id)]["CHAT"].append(message.content)
+
+        with open('data.json', 'w', encoding='utf-8') as file2:
+            json.dump(data2,file2)  
+
+        if 1 in data1[str(message.guild.id)]['Spam']:
 
                 global author_msg_counts
 
@@ -2502,4 +2717,4 @@ async def on_message(message):
 
         await _bot.process_commands(message)
 
-_bot.run(Your token")      
+_bot.run("MTAxNzk3NTYwODk0MjI2ODQxNg.Glp9n4.JnhDwL9ZB8d6Az50CipFP-gDBtT_M0LiMBYKRc")      
