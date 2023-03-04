@@ -1,4 +1,4 @@
-randfacts==3.8.4
+randfacts==0.20.1
 urllib3==1.26.14
 aiohttp==3.8.4
 anyio==3.6.2
