@@ -4,7 +4,7 @@ aiohttp==3.8.1
 anyio==3.6.2
 aiosignal==1.3.1
 colorama==0.4.6
-disnake==2.8.0
+disnake==2.7.9
 disnake-ext-components @ git+https://github.com/DisnakeCommunity/disnake-ext-components@b956df5af88de8d7627f96b23dca1cf6043bf614
 topggpy==1.4.0
 easy-pil==0.1.1
