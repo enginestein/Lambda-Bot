@@ -1,5 +1,5 @@
 This is a discord bot with 40+ commands with a unique economy system. 
-# The Nerd
+# Lambda Bot
 =======
 # How to use
 
